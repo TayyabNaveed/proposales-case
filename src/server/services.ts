@@ -1,0 +1,145 @@
+import "server-only";
+import { createHmac } from "node:crypto";
+import { database } from "./runtime.js";
+import {
+  createRecommendationStore,
+  createRecommendationService,
+} from "./recommendations.js";
+import { createDraftService, createDraftStore } from "./drafts.js";
+import { createOperationStore } from "./db.js";
+import { createAssetStore, getServiceMapping } from "./provider-assets.js";
+import { createProposales } from "./providers/proposales.js";
+import {
+  buildPricedPayload,
+  verifyPricedProposal,
+} from "./providers/proposales-mapping.js";
+import type { DraftSnapshot } from "../domain/offers.js";
+import { createDraftFromSnapshot } from "./workflow.js";
+import { createApiHandlers } from "./api.js";
+import { consumeActionAttempt } from "./access-store.js";
+import { createResearchStore, createResearchService } from "./research.js";
+import { createResearchApi } from "./research-api.js";
+async function consume(scope: string, action: string) {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) throw new Error("access_unconfigured");
+  return consumeActionAttempt(
+    database(),
+    createHmac("sha256", secret)
+      .update("action:" + scope + ":" + action)
+      .digest("hex"),
+  );
+}
+function researchService() {
+  return createResearchService(createResearchStore(database()), {
+    model: process.env.DEEPSEEK_MODEL ?? "",
+  });
+}
+export function researchHandlers() {
+  const research = researchService();
+  return createResearchApi({
+    consume,
+    search: research.search,
+    report: research.report,
+    get: research.get,
+  });
+}
+function model() {
+  const value = process.env.DEEPSEEK_MODEL;
+  if (!value || !process.env.DEEPSEEK_API_KEY)
+    throw new Error("model_configuration_missing");
+  return value;
+}
+export function apiHandlers() {
+  return createApiHandlers({
+    consume,
+    async recommend(reportId, scope, refresh) {
+      return createRecommendationService(
+        createRecommendationStore(database()),
+        { model: model(), resolveReport: researchService().resolveReport },
+      ).getOrCreateRecommendation(reportId, scope, refresh);
+    },
+    async recommendation(id, scope) {
+      return createRecommendationStore(database()).get(id, scope);
+    },
+    async snapshot(requestId, recommendationId, selections, scope) {
+      return createDraftService(database(), {
+        model: model(),
+        resolveReport: researchService().resolveReport,
+      }).getOrCreateDraftSnapshot(
+        requestId,
+        recommendationId,
+        selections,
+        scope,
+      );
+    },
+    async getSnapshot(id, scope) {
+      return createDraftStore(database()).get(id, scope);
+    },
+    async findSnapshot(requestId, scope) {
+      return createDraftStore(database()).findRequest(requestId, scope);
+    },
+    async draft(id, scope, mode) {
+      const companyId = process.env.PROPOSALES_COMPANY_ID,
+        apiKey = process.env.PROPOSALES_API_KEY;
+      if (!companyId || !apiKey)
+        throw new Error("provider_configuration_missing");
+      const api = createProposales({ apiKey, companyId }),
+        assets = createAssetStore(database());
+      const mappings = (s: DraftSnapshot) =>
+        Promise.all(
+          s.items.map((i) =>
+            getServiceMapping(
+              assets,
+              companyId,
+              i.serviceId,
+              s.catalogueVersion,
+            ),
+          ),
+        );
+      return createDraftFromSnapshot({
+        snapshotId: id,
+        accessScope: scope,
+        companyId,
+        mode,
+        drafts: createDraftStore(database()),
+        operations: createOperationStore(database()),
+        provider: {
+          async prepare(s) {
+            buildPricedPayload(
+              s,
+              await mappings(s),
+              companyId,
+              `preflight:${id}`,
+            );
+          },
+          async create(s, key) {
+            return api.createPricedDraft(s, await mappings(s), key);
+          },
+          async inspect(uuid, s, key) {
+            const actual = await api.getDraft(uuid);
+            return {
+              ...verifyPricedProposal(
+                actual,
+                s,
+                await mappings(s),
+                companyId,
+                key,
+              ),
+              url: actual.url,
+            };
+          },
+          async find(key) {
+            return (await api.findByOperation(key)).map((p) => ({
+              uuid: p.uuid,
+              snapshotHash:
+                typeof p.data?.case_snapshot === "string"
+                  ? p.data.case_snapshot
+                  : "",
+              url: p.url,
+            }));
+          },
+        },
+      });
+    },
+  });
+}

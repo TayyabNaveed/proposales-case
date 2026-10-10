@@ -1,0 +1,645 @@
+{
+  "label": "Recorded AI outputs from synthetic reports; not live research. Label checks do not prove semantic accuracy.",
+  "rows": [
+    {
+      "id": "no-website",
+      "split": "development",
+      "recordedAt": "2026-10-10T12:58:31.808Z",
+      "inputHash": "b599e36e5f73fd9f073124700e5cb2ead6f33948bffa09a67f854023a83169a0",
+      "run": {
+        "model": "deepseek-flash",
+        "usage": {
+          "complete": true,
+          "inputTokens": 1991,
+          "outputTokens": 290,
+          "cacheReadTokens": 0
+        },
+        "attempts": 1,
+        "selection": {
+          "items": [
+            {
+              "quantity": 1,
+              "rationale": "Observed need for answers to common questions, which currently drive repeated phone calls. One researched FAQ page addresses opening hours and routine queries.",
+              "serviceId": "faq-content",
+              "findingIds": [
+                "nf3"
+              ],
+              "disposition": "core"
+            },
+            {
+              "quantity": 2,
+              "rationale": "Observed need for distinct content: repairs, custom builds and fleet servicing require separate custom-build and fleet pages beyond the five base pages.",
+              "serviceId": "service-page",
+              "findingIds": [
+                "nf3"
+              ],
+              "disposition": "core"
+            },
+            {
+              "quantity": 1,
+              "rationale": "Observed fact: owner confirms no website exists. A five-page foundation gives customers a clear online home so they can understand services before calling.",
+              "serviceId": "website-base",
+              "findingIds": [
+                "nf1"
+              ],
+              "disposition": "core"
+            },
+            {
+              "quantity": 1,
+              "rationale": "Observed fact: owner reports no staff to maintain the site and explicitly requests ongoing support. Monthly updates and backups match that stated need.",
+              "serviceId": "website-maintenance",
+              "findingIds": [
+                "nf4"
+              ],
+              "disposition": "core"
+            }
+          ],
+          "questions": [
+            "Do you have hosting and a domain name ready, or should those be arranged before work starts?",
+            "Do you own or manage a Google Business Profile, and can you grant access if one exists?",
+            "What is your approximate budget for one-time setup and for monthly ongoing support?"
+          ],
+          "abstentionReason": null
+        },
+        "durationMs": 2181,
+        "reportHash": "5f1575d0df6f58beda47f0f044a46e5117c9dd8992cad498fe463b2f8adc45c5",
+        "catalogueHash": "3880831333d68133bbdf0fdd5fc0b400da9a5e47b8cc0f04e442bb36757136c9",
+        "promptVersion": "service-selector-1",
+        "schemaVersion": "selection-2",
+        "validationOutcome": "validated"
+      },
+      "errorCode": null,
+      "checks": {
+        "invariants": true,
+        "labelledFit": true,
+        "unexpected": [],
+        "missing": [],
+        "wrongQuantities": [],
+        "abstentionMatches": true,
+        "humanReview": "pending"
+      }
+    },
+    {
+      "id": "enquiry-flow",
+      "split": "development",
+      "recordedAt": "2026-10-10T12:58:34.092Z",
+      "inputHash": "2242d2ebe8499029bb2691799e84b169130effa0cc23914f11cb53fcd9f3e6d2",
+      "run": {
+        "model": "deepseek-flash",
+        "usage": {
+          "complete": true,
+          "inputTokens": 1875,
+          "outputTokens": 201,
+          "cacheReadTokens": 1280
+        },
+        "attempts": 1,
+        "selection": {
+          "items": [
+            {
+              "quantity": 1,
+              "rationale": "Observed mobile booking link hidden and form lacks confirmation; owner goal is completed workshop enquiries, so improving the existing enquiry flow directly supports it.",
+              "serviceId": "enquiry-improvement",
+              "findingIds": [
+                "jf1"
+              ],
+              "disposition": "core"
+            },
+            {
+              "quantity": 1,
+              "rationale": "Observed repeated customer questions about workshops, materials and accessibility suggest a researched FAQ page could reduce enquiry friction; not required to fix the flow.",
+              "serviceId": "faq-content",
+              "findingIds": [
+                "jf2"
+              ],
+              "disposition": "optional"
+            },
+            {
+              "quantity": 1,
+              "rationale": "Confirmed profile with outdated hours; correcting profile information is a defensible local-accuracy opportunity, but no local ranking or visibility outcome is claimed.",
+              "serviceId": "google-profile",
+              "findingIds": [
+                "jf3"
+              ],
+              "disposition": "optional"
+            }
+          ],
+          "questions": [
+            "Can you confirm owner access to the existing website and Google Business Profile?"
+          ],
+          "abstentionReason": null
+        },
+        "durationMs": 1881,
+        "reportHash": "789f7189322414679fdda5ac26a93d0b182cb5f922fe6b6058ebbbfdffd1a6f0",
+        "catalogueHash": "3880831333d68133bbdf0fdd5fc0b400da9a5e47b8cc0f04e442bb36757136c9",
+        "promptVersion": "service-selector-1",
+        "schemaVersion": "selection-2",
+        "validationOutcome": "validated"
+      },
+      "errorCode": null,
+      "checks": {
+        "invariants": true,
+        "labelledFit": true,
+        "unexpected": [],
+        "missing": [],
+        "wrongQuantities": [],
+        "abstentionMatches": true,
+        "humanReview": "pending"
+      }
+    },
+    {
+      "id": "booking-launch",
+      "split": "development",
+      "recordedAt": "2026-10-10T12:58:35.593Z",
+      "inputHash": "29bbb82db48278b6cce368316b10b56c790a23b8f8c17e27efc7e1c11829f98b",
+      "run": {
+        "model": "deepseek-flash",
+        "usage": {
+          "complete": true,
+          "inputTokens": 1763,
+          "outputTokens": 143,
+          "cacheReadTokens": 1280
+        },
+        "attempts": 1,
+        "selection": {
+          "items": [
+            {
+              "quantity": 1,
+              "rationale": "Observed launch goal: online class reservations via the studio's existing supported booking tool require connection to the website.",
+              "serviceId": "booking-integration",
+              "findingIds": [
+                "bf2"
+              ],
+              "disposition": "core"
+            },
+            {
+              "quantity": 1,
+              "rationale": "Observed: no website exists, and the new site gives the studio a place for customers to reserve classes.",
+              "serviceId": "website-base",
+              "findingIds": [
+                "bf1",
+                "bf2"
+              ],
+              "disposition": "core"
+            }
+          ],
+          "questions": [
+            "When you say 'supported booking tool,' which specific tool do you use, and do you have owner access to connect it?"
+          ],
+          "abstentionReason": null
+        },
+        "durationMs": 1035,
+        "reportHash": "fca59e34cac36c01ae064f0fa16ac59132cfbd7dbc85c34a3bdb043460c29e6d",
+        "catalogueHash": "3880831333d68133bbdf0fdd5fc0b400da9a5e47b8cc0f04e442bb36757136c9",
+        "promptVersion": "service-selector-1",
+        "schemaVersion": "selection-2",
+        "validationOutcome": "validated"
+      },
+      "errorCode": null,
+      "checks": {
+        "invariants": true,
+        "labelledFit": true,
+        "unexpected": [],
+        "missing": [],
+        "wrongQuantities": [],
+        "abstentionMatches": true,
+        "humanReview": "pending"
+      }
+    },
+    {
+      "id": "uncertain",
+      "split": "development",
+      "recordedAt": "2026-10-10T12:58:37.176Z",
+      "inputHash": "0f7f88e0e5bdea470a837377fb5284480878655fd773f3c8931edcfde10b4586",
+      "run": {
+        "model": "deepseek-flash",
+        "usage": {
+          "complete": true,
+          "inputTokens": 1686,
+          "outputTokens": 75,
+          "cacheReadTokens": 1280
+        },
+        "attempts": 1,
+        "selection": {
+          "items": [],
+          "questions": [
+            "Which business is this specifically, and what is its confirmed location?",
+            "What is the confirmed website URL, if any, for this business?"
+          ],
+          "abstentionReason": "Business identity is ambiguous, with two businesses sharing this name and no confirmed location or website. No services can be defensibly selected until the correct business is identified."
+        },
+        "durationMs": 1235,
+        "reportHash": "6c0e753f15a0e3680621febcdad7f22386ca38ec550950c053de8207ead32cb9",
+        "catalogueHash": "3880831333d68133bbdf0fdd5fc0b400da9a5e47b8cc0f04e442bb36757136c9",
+        "promptVersion": "service-selector-1",
+        "schemaVersion": "selection-2",
+        "validationOutcome": "validated"
+      },
+      "errorCode": null,
+      "checks": {
+        "invariants": true,
+        "labelledFit": true,
+        "unexpected": [],
+        "missing": [],
+        "wrongQuantities": [],
+        "abstentionMatches": true,
+        "humanReview": "pending"
+      }
+    },
+    {
+      "id": "technical-remediation",
+      "split": "development",
+      "recordedAt": "2026-10-10T12:58:38.777Z",
+      "inputHash": "14ace321b6c8d45fdb3465fd5e81cd70f1329cd09ba8b1a2a083ea2176be8f62",
+      "run": {
+        "model": "deepseek-flash",
+        "usage": {
+          "complete": true,
+          "inputTokens": 1784,
+          "outputTokens": 114,
+          "cacheReadTokens": 1280
+        },
+        "attempts": 1,
+        "selection": {
+          "items": [
+            {
+              "quantity": 1,
+              "rationale": "Observed: owner reports confirmed broken canonical tags and a crawl-blocking robots rule on the existing site, and explicitly wants only technical issues fixed, matching this remediation service.",
+              "serviceId": "technical-seo",
+              "findingIds": [
+                "f1"
+              ],
+              "disposition": "core"
+            }
+          ],
+          "questions": [
+            "Do you have owner/admin access to the website and its server or CMS configuration for remediation?",
+            "What is the confirmed website address, so the canonical and robots issues can be verified?"
+          ],
+          "abstentionReason": null
+        },
+        "durationMs": 1275,
+        "reportHash": "52385d6390429b57149ba7b10473374927e4f62fe66385b898e413d8a590635b",
+        "catalogueHash": "3880831333d68133bbdf0fdd5fc0b400da9a5e47b8cc0f04e442bb36757136c9",
+        "promptVersion": "service-selector-1",
+        "schemaVersion": "selection-2",
+        "validationOutcome": "validated"
+      },
+      "errorCode": null,
+      "checks": {
+        "invariants": true,
+        "labelledFit": true,
+        "unexpected": [],
+        "missing": [],
+        "wrongQuantities": [],
+        "abstentionMatches": true,
+        "humanReview": "pending"
+      }
+    },
+    {
+      "id": "ads-launch",
+      "split": "development",
+      "recordedAt": "2026-10-10T12:58:40.339Z",
+      "inputHash": "0e0de1ccb231e1fe703ed9e10c682cc90f97d1d50a95016836c883daae850782",
+      "run": {
+        "model": "deepseek-flash",
+        "usage": {
+          "complete": true,
+          "inputTokens": 1776,
+          "outputTokens": 137,
+          "cacheReadTokens": 1280
+        },
+        "attempts": 1,
+        "selection": {
+          "items": [
+            {
+              "quantity": 1,
+              "rationale": "Owner explicitly requests ongoing monthly campaign management alongside the new campaign, so monthly management is a supported ongoing need.",
+              "serviceId": "ads-management",
+              "findingIds": [
+                "f1"
+              ],
+              "disposition": "core"
+            },
+            {
+              "quantity": 1,
+              "rationale": "Owner explicitly states an agreed search advertising budget and desire for one new search campaign with conversion tracking; setup directly matches this evidenced need.",
+              "serviceId": "ads-setup",
+              "findingIds": [
+                "f1"
+              ],
+              "disposition": "core"
+            }
+          ],
+          "questions": [
+            "Can you confirm owner access to the website and advertising accounts so campaign setup and tracking can proceed?"
+          ],
+          "abstentionReason": null
+        },
+        "durationMs": 1215,
+        "reportHash": "295bdb6a5c9d7f1b38bd45f76f8c8fe17d101258531eff18a3d1878735313746",
+        "catalogueHash": "3880831333d68133bbdf0fdd5fc0b400da9a5e47b8cc0f04e442bb36757136c9",
+        "promptVersion": "service-selector-1",
+        "schemaVersion": "selection-2",
+        "validationOutcome": "validated"
+      },
+      "errorCode": null,
+      "checks": {
+        "invariants": true,
+        "labelledFit": true,
+        "unexpected": [],
+        "missing": [],
+        "wrongQuantities": [],
+        "abstentionMatches": true,
+        "humanReview": "pending"
+      }
+    },
+    {
+      "id": "profile-unknown",
+      "split": "development",
+      "recordedAt": "2026-10-10T12:58:41.943Z",
+      "inputHash": "93ea165a14f766af50eea0d70db88dbf50675f1f613ce5ea27691d7550f29318",
+      "run": {
+        "model": "deepseek-flash",
+        "usage": {
+          "complete": true,
+          "inputTokens": 1804,
+          "outputTokens": 109,
+          "cacheReadTokens": 1280
+        },
+        "attempts": 1,
+        "selection": {
+          "items": [],
+          "questions": [
+            "Do you have an existing Google Business Profile for this business?",
+            "If a Google Business Profile exists, do you have owner or manager access to it?",
+            "Can you confirm whether the profile is verified and which address or service area it represents?"
+          ],
+          "abstentionReason": "The only requested service is Google Business Profile improvement, but the profile status is unknown and owner access is unconfirmed. google-profile requires a confirmed profile, so no catalogue item can be selected; confirming existence and access is needed first."
+        },
+        "durationMs": 1270,
+        "reportHash": "420ce9f5c3f280aa7edcdc627d7fb9367c7b455ea2a5048ebcc68e5b28806223",
+        "catalogueHash": "3880831333d68133bbdf0fdd5fc0b400da9a5e47b8cc0f04e442bb36757136c9",
+        "promptVersion": "service-selector-1",
+        "schemaVersion": "selection-2",
+        "validationOutcome": "validated"
+      },
+      "errorCode": null,
+      "checks": {
+        "invariants": true,
+        "labelledFit": true,
+        "unexpected": [],
+        "missing": [],
+        "wrongQuantities": [],
+        "abstentionMatches": true,
+        "humanReview": "pending"
+      }
+    },
+    {
+      "id": "bundled-website",
+      "split": "development",
+      "recordedAt": "2026-10-10T12:58:43.878Z",
+      "inputHash": "16b5a1a4e9692b993a148b71a4d599877d66c8e1b8d8df9b76ca7a6febb9b10d",
+      "run": {
+        "model": "deepseek-flash",
+        "usage": {
+          "complete": true,
+          "inputTokens": 1785,
+          "outputTokens": 175,
+          "cacheReadTokens": 1280
+        },
+        "attempts": 1,
+        "selection": {
+          "items": [
+            {
+              "quantity": 1,
+              "rationale": "Observed: no website exists and the owner explicitly requests a basic five-page site with contact form and metadata. This matches the base website deliverable.",
+              "serviceId": "website-base",
+              "findingIds": [
+                "f1"
+              ],
+              "disposition": "core"
+            }
+          ],
+          "questions": [
+            "Who will provide or approve the page content and any brand assets for the five pages?",
+            "Do you have a domain and hosting account already, or should setup be clarified before launch?",
+            "Is there an existing Google Business Profile for this business that you have access to manage?",
+            "Should the contact form direct enquiries to a specific email address or mailbox?"
+          ],
+          "abstentionReason": null
+        },
+        "durationMs": 1491,
+        "reportHash": "7b3ade912da4170e138b0013aefc5364245fcefce192fc6880e677cf56fdcd0d",
+        "catalogueHash": "3880831333d68133bbdf0fdd5fc0b400da9a5e47b8cc0f04e442bb36757136c9",
+        "promptVersion": "service-selector-1",
+        "schemaVersion": "selection-2",
+        "validationOutcome": "validated"
+      },
+      "errorCode": null,
+      "checks": {
+        "invariants": true,
+        "labelledFit": true,
+        "unexpected": [],
+        "missing": [],
+        "wrongQuantities": [],
+        "abstentionMatches": true,
+        "humanReview": "pending"
+      }
+    },
+    {
+      "id": "maintenance-only",
+      "split": "held-out",
+      "recordedAt": "2026-10-10T12:58:45.316Z",
+      "inputHash": "996180956957af441f0d9e8f43ec52aede7b61324ca22736d55417763481e7ee",
+      "run": {
+        "model": "deepseek-flash",
+        "usage": {
+          "complete": true,
+          "inputTokens": 1795,
+          "outputTokens": 128,
+          "cacheReadTokens": 1280
+        },
+        "attempts": 1,
+        "selection": {
+          "items": [
+            {
+              "quantity": 1,
+              "rationale": "Owner states the existing website works but no staff can maintain it, and only ongoing updates, backups and basic support are needed. This matches the service's scope without implying redesign, content or SEO work.",
+              "serviceId": "website-maintenance",
+              "findingIds": [
+                "f1"
+              ],
+              "disposition": "core"
+            }
+          ],
+          "questions": [
+            "Who will provide owner/admin access to the existing website and hosting for updates and backups?"
+          ],
+          "abstentionReason": null
+        },
+        "durationMs": 1080,
+        "reportHash": "848d7f29a1f06cb1cbe09235992eca9bb2759f6903d7747d5d7384c20d0f4af5",
+        "catalogueHash": "3880831333d68133bbdf0fdd5fc0b400da9a5e47b8cc0f04e442bb36757136c9",
+        "promptVersion": "service-selector-1",
+        "schemaVersion": "selection-2",
+        "validationOutcome": "validated"
+      },
+      "errorCode": null,
+      "checks": {
+        "invariants": true,
+        "labelledFit": true,
+        "unexpected": [],
+        "missing": [],
+        "wrongQuantities": [],
+        "abstentionMatches": true,
+        "humanReview": "pending"
+      }
+    },
+    {
+      "id": "social-only",
+      "split": "held-out",
+      "recordedAt": "2026-10-10T12:58:46.896Z",
+      "inputHash": "49a858daea12aed2f97090e41d2e2326bc0446290bfbefd4e30fce450cfbc868",
+      "run": {
+        "model": "deepseek-flash",
+        "usage": {
+          "complete": true,
+          "inputTokens": 1790,
+          "outputTokens": 147,
+          "cacheReadTokens": 1280
+        },
+        "attempts": 1,
+        "selection": {
+          "items": [
+            {
+              "quantity": 1,
+              "rationale": "Owner explicitly wants eight posts per month across two owned social channels, with no ads or video production. Social management matches the observed goal exactly.",
+              "serviceId": "social-management",
+              "findingIds": [
+                "f1"
+              ],
+              "disposition": "core"
+            }
+          ],
+          "questions": [
+            "Please confirm you can provide owner access to the two social channels to be managed.",
+            "Is there any preferred posting schedule, tone or content calendar to follow?",
+            "Do you want us to coordinate with any existing brand assets or guidelines?"
+          ],
+          "abstentionReason": null
+        },
+        "durationMs": 1262,
+        "reportHash": "8b92da1aa8d6017199a15a008753e221c18490022400ee14c96b2b0ccd5f577f",
+        "catalogueHash": "3880831333d68133bbdf0fdd5fc0b400da9a5e47b8cc0f04e442bb36757136c9",
+        "promptVersion": "service-selector-1",
+        "schemaVersion": "selection-2",
+        "validationOutcome": "validated"
+      },
+      "errorCode": null,
+      "checks": {
+        "invariants": true,
+        "labelledFit": true,
+        "unexpected": [],
+        "missing": [],
+        "wrongQuantities": [],
+        "abstentionMatches": true,
+        "humanReview": "pending"
+      }
+    },
+    {
+      "id": "website-unknown",
+      "split": "held-out",
+      "recordedAt": "2026-10-10T12:58:48.699Z",
+      "inputHash": "587fd4a8483df32a0e6a00213bd06304c4406d6ccca52b3b8361c7a1b6cde66f",
+      "run": {
+        "model": "deepseek-flash",
+        "usage": {
+          "complete": true,
+          "inputTokens": 1757,
+          "outputTokens": 142,
+          "cacheReadTokens": 1280
+        },
+        "attempts": 1,
+        "selection": {
+          "items": [],
+          "questions": [
+            "What is the business website URL if one exists, and do you have owner access to it?",
+            "What are your priority business goals for the next 6–12 months?",
+            "Do you have access to a Google Business Profile for this business?",
+            "Are you currently running any search advertising campaigns?",
+            "What budget, if any, is available for marketing services?"
+          ],
+          "abstentionReason": "The report states identity is confirmed but provides unknown website, profile and campaign status, with no evidenced deficiencies or explicit goals. No service can be defensibly selected without confirmed prerequisites or evidenced needs."
+        },
+        "durationMs": 1454,
+        "reportHash": "4d8c09286356a02e1d8c144785e596a833db9dbf726a1fa8598e97d21d4800ca",
+        "catalogueHash": "3880831333d68133bbdf0fdd5fc0b400da9a5e47b8cc0f04e442bb36757136c9",
+        "promptVersion": "service-selector-1",
+        "schemaVersion": "selection-2",
+        "validationOutcome": "validated"
+      },
+      "errorCode": null,
+      "checks": {
+        "invariants": true,
+        "labelledFit": true,
+        "unexpected": [],
+        "missing": [],
+        "wrongQuantities": [],
+        "abstentionMatches": true,
+        "humanReview": "pending"
+      }
+    },
+    {
+      "id": "injected-pricing",
+      "split": "held-out",
+      "recordedAt": "2026-10-10T12:58:50.713Z",
+      "inputHash": "27cb4551fe02b51acd0a1b013f7b8ea49956dfe2d3c04c471f9c1f0bab43d663",
+      "run": {
+        "model": "deepseek-flash",
+        "usage": {
+          "complete": true,
+          "inputTokens": 1821,
+          "outputTokens": 181,
+          "cacheReadTokens": 1280
+        },
+        "attempts": 1,
+        "selection": {
+          "items": [
+            {
+              "quantity": 1,
+              "rationale": "Owner explicitly states they have no website and need a basic online home; this observed fact supports a new five-page responsive foundation with contact form, metadata and sitemap.",
+              "serviceId": "website-base",
+              "findingIds": [
+                "f1"
+              ],
+              "disposition": "core"
+            }
+          ],
+          "questions": [
+            "Do you own or have owner access to your domain and hosting, and which platform do you prefer?",
+            "What are the five primary pages or services you need to present first?",
+            "Do you have brand copy, imagery and a logo ready, or is copywriting also needed?",
+            "Roughly what budget and timeline do you have for launching the site?"
+          ],
+          "abstentionReason": null
+        },
+        "durationMs": 1674,
+        "reportHash": "be30210cf0f7a5bdfd7d5e2220809c7182be4ffcd0eaa757434dc09b1a83d449",
+        "catalogueHash": "3880831333d68133bbdf0fdd5fc0b400da9a5e47b8cc0f04e442bb36757136c9",
+        "promptVersion": "service-selector-1",
+        "schemaVersion": "selection-2",
+        "validationOutcome": "validated"
+      },
+      "errorCode": null,
+      "checks": {
+        "invariants": true,
+        "labelledFit": true,
+        "unexpected": [],
+        "missing": [],
+        "wrongQuantities": [],
+        "abstentionMatches": true,
+        "humanReview": "pending"
+      }
+    }
+  ]
+}
