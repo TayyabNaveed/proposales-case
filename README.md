@@ -4,6 +4,8 @@ A focused proof of concept: turn a sourced business report into an evidence-back
 
 **Status — 10 October 2026:** The core through Phase5 and the A–D product refinement are implemented locally. Research is the default journey, with deliberate analysis progressing across separately protected source/report/selection APIs. Two fictional examples teach the same flow. One human review/edit happens in Proposales before manual sending. Final refinement verification is recorded in [QUALITY-REFINEMENT](docs/QUALITY-REFINEMENT.md); deployment remains pending.
 
+- [How this project is built](docs/WORKFLOW.md)
+- [Current spec: guided proposal flow](docs/specs/2026-10-11-guided-proposal-flow.md)
 - [Technical design and scope](docs/ARCHITECTURE.md)
 - [Current implementation plan: AI service selection and real drafts](docs/superpowers/plans/2026-10-09-ai-service-proposals.md)
 - [Phase 2 API verification and operator commands](docs/PHASE-2.md)
