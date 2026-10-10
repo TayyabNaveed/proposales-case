@@ -193,6 +193,8 @@ export class ResearchReportFailure extends Error {
   constructor(
     readonly diagnostics: Omit<ResearchReportResult, "report"> & {
       failure: "validation_failed" | "provider_failed";
+      // Which deterministic check rejected the output; never raw model text.
+      check?: string;
     },
   ) {
     super("research_report_failed");
@@ -283,9 +285,16 @@ export async function generateResearchReport(
       retainUsage(error.usage);
       generated = true;
     }
+    const check =
+      error instanceof Error && /^research_unsupported\w*$/.test(error.message)
+        ? error.message
+        : NoObjectGeneratedError.isInstance(error)
+          ? "output_schema"
+          : undefined;
     throw new ResearchReportFailure({
       ...diagnostics(),
       failure: generated ? "validation_failed" : "provider_failed",
+      ...(check ? { check } : {}),
     });
   }
 }

@@ -122,9 +122,11 @@ test("extracted active prompts preserve exact shipped text and record operationa
   const { definition: researchV2 } =
     await import("../src/prompts/research-report/v2.js");
   const hash = (s: string) => createHash("sha256").update(s).digest("hex");
-  // research-report-2 stays byte-identical for replay; research-report-3 is active.
-  assert.equal(activePrompts.research.version, "research-report-3");
+  // research-report-2 stays byte-identical for replay; research-report-4 is active.
+  assert.equal(activePrompts.research.version, "research-report-4");
   assert.match(activePrompts.research.system, /unverified|older listing/i);
+  // Same-name businesses elsewhere are unrelated results, not ambiguity.
+  assert.match(activePrompts.research.system, /other locations/i);
   assert.equal(
     hash(researchV2.system),
     "aa80bde27622f20ab4b0e61c80e2670596a022a8fa8f37fd8492c5076a84fe9d",

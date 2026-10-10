@@ -141,38 +141,43 @@ export function buildLiveReport(
   input = researchInputSchema.parse(input);
   const out = researchOutputSchema.parse(raw);
   const known = new Map(evidence.map((e) => [e.id, e]));
-  for (const f of out.findings) {
-    if (f.kind !== "observed" && /\d+\s*%/.test(f.claim))
-      throw new Error("research_unsupported");
-    if (f.evidenceIds.some((id) => !known.has(id)))
-      throw new Error("research_unsupported");
-    if (
-      f.kind === "observed" &&
-      (f.claim.length < 12 ||
-        !f.evidenceIds.some((id) =>
-          known
-            .get(id)!
-            .excerpt.replace(/\s+/g, " ")
-            .includes(f.claim.replace(/\s+/g, " ")),
-        ))
-    )
-      throw new Error("research_unsupported");
-  }
-  for (const claim of [
-    out.summary,
-    ...out.findings.map((f) => f.claim),
-    ...out.actions.map((a) => a.text),
-  ]) {
-    if (
-      /\b(?:no|without|absent|missing|lacks?|does not have)\b[^.!?]{0,80}\b(?:website|google business profile|search console)\b/i.test(
-        claim,
-      ) ||
-      /(?:no|without|does not have|lacks?|missing) (?:a |an )?(?:website|google business profile|search console)|ranked? (?:number|#|\d)|page\s?speed|(?:traffic|conversion|ranking|visibility|revenue)[^.!?]{0,80}\d+\s*%|AI visibility (?:score|rank)/i.test(
-        claim,
-      )
-    )
-      throw new Error("research_unsupported");
-  }
+  const forbidden = (claim: string) =>
+    /\b(?:no|without|absent|missing|lacks?|does not have)\b[^.!?]{0,80}\b(?:website|google business profile|search console)\b/i.test(
+      claim,
+    ) ||
+    /(?:no|without|does not have|lacks?|missing) (?:a |an )?(?:website|google business profile|search console)|ranked? (?:number|#|\d)|page\s?speed|(?:traffic|conversion|ranking|visibility|revenue)[^.!?]{0,80}\d+\s*%|AI visibility (?:score|rank)/i.test(
+      claim,
+    );
+  // The summary cannot be removed, so an unsupported summary rejects the report.
+  if (forbidden(out.summary)) throw new Error("research_unsupported_summary");
+  // One unsupported finding or action is removed and disclosed rather than
+  // discarding every supported statement; nothing unsupported is shown.
+  const findings = out.findings.filter(
+    (f) =>
+      !(f.kind !== "observed" && /\d+\s*%/.test(f.claim)) &&
+      !f.evidenceIds.some((id) => !known.has(id)) &&
+      !(
+        f.kind === "observed" &&
+        (f.claim.length < 12 ||
+          !f.evidenceIds.some((id) =>
+            known
+              .get(id)!
+              .excerpt.replace(/\s+/g, " ")
+              .includes(f.claim.replace(/\s+/g, " ")),
+          ))
+      ) &&
+      !forbidden(f.claim),
+  );
+  const kept = new Set(findings.map((f) => f.id));
+  const actions = out.actions
+    .filter((a) => !forbidden(a.text))
+    .map((a) => ({ ...a, findingIds: a.findingIds.filter((id) => kept.has(id)) }))
+    .filter((a) => a.findingIds.length);
+  // Actions that only lost their findings are a consequence, not counted again.
+  const removed =
+    out.findings.length -
+    findings.length +
+    out.actions.filter((a) => forbidden(a.text)).length;
   const identityStatus =
     out.identityStatus === "confirmed" && identitySupported(input, evidence)
       ? "confirmed"
@@ -202,11 +207,16 @@ export function buildLiveReport(
       profile: unknown(),
       campaign: unknown(),
     },
-    findings: out.findings,
-    actions: out.actions,
+    findings,
+    actions,
     evidence,
     uncertainties: [
       ...out.uncertainties,
+      ...(removed
+        ? [
+            `${removed} ${removed === 1 ? "statement was" : "statements were"} removed because the sources did not support ${removed === 1 ? "it" : "them"}.`,
+          ]
+        : []),
       ...(identityStatus === "ambiguous"
         ? [
             "Business identity is unconfirmed; confirm name, location and website before recommending services.",

@@ -16,6 +16,12 @@ const evidence = [
     synthetic: false,
   },
 ];
+// An unsupported finding or action is removed and disclosed, never shown.
+function assertDropped(build: () => { findings: unknown[]; actions: unknown[]; uncertainties: string[] }) {
+  const r = build();
+  assert.equal(r.findings.length + r.actions.length <= 1, true);
+  assert.ok(r.uncertainties.some((u) => /removed because the sources did not support/.test(u)));
+}
 const output = {
   identityStatus: "confirmed",
   summary: "A pottery studio offers beginner classes.",
@@ -49,7 +55,7 @@ test("live report uses owned evidence and cannot turn missing search results int
     "live-123",
   );
   assert.equal(absent.capabilities.website.status, "unknown");
-  assert.throws(() =>
+  assertDropped(() =>
     buildLiveReport(
       input,
       evidence,
@@ -62,7 +68,7 @@ test("live report uses owned evidence and cannot turn missing search results int
       "live-123",
     ),
   );
-  assert.throws(() =>
+  assertDropped(() =>
     buildLiveReport(
       input,
       evidence,
@@ -85,7 +91,7 @@ test("ambiguous name/location remains ambiguous and fabricated source quotations
     ).identityStatus,
     "ambiguous",
   );
-  assert.throws(() =>
+  assertDropped(() =>
     buildLiveReport(
       input,
       evidence,
@@ -228,12 +234,11 @@ test("report model treats source instructions as data and rejects fabricated obs
     generateResearchReport(input, source, "live-123", {
       apiKey: "synthetic",
       model: "deepseek-flash",
-      fetch: transport({
-        ...output,
-        findings: [{ ...output.findings[0], claim: "No website exists." }],
-      }),
+      fetch: transport({ ...output, summary: "No website exists." }),
     }),
-    /research_report_failed/,
+    (e: any) =>
+      e.message === "research_report_failed" &&
+      e.diagnostics.check === "research_unsupported_summary",
   );
   assert.equal(calls, 2);
 });
@@ -263,7 +268,7 @@ test("unverified absence and numeric performance claims cannot hide in summaries
       "live-123",
     ),
   );
-  assert.throws(() =>
+  assertDropped(() =>
     buildLiveReport(
       input,
       evidence,
@@ -284,7 +289,7 @@ test("unverified absence and numeric performance claims cannot hide in summaries
 
 test("inferred absence with qualifiers and mixed-business identity cannot become a confirmed live report", async () => {
   const { buildLiveReport } = await import("../src/domain/research.js");
-  assert.throws(() =>
+  assertDropped(() =>
     buildLiveReport(
       input,
       evidence,
@@ -384,7 +389,7 @@ test("literal observed quotes tolerate source whitespace and sourced discounts a
     "live-123",
   );
   assert.equal(r.findings.length, 2);
-  assert.throws(() =>
+  assertDropped(() =>
     buildLiveReport(
       input,
       source,
@@ -490,4 +495,34 @@ test("name matching tolerates a possessive s, as in Swedish listings, but not ot
   assert.equal(identitySupported(shop, listing("Stadsmissionens Second Hand in Uppsala")), true);
   assert.equal(identitySupported(shop, listing("Stadsmissionen Second Handbags in Uppsala")), false);
   assert.equal(identitySupported(shop, listing("Stadsmissionen Second Hand, Köpmangatan 15, Stockholm")), false);
+});
+
+test("one unsupported finding is dropped without discarding the supported report", async () => {
+  const { buildLiveReport } = await import("../src/domain/research.js");
+  const r = buildLiveReport(
+    input,
+    evidence,
+    {
+      ...output,
+      findings: [
+        output.findings[0],
+        { ...output.findings[0], id: "f2", claim: "Juniper Ceramics has won ten national awards." },
+      ],
+      actions: [
+        { id: "a1", text: "Consider clear class information", findingIds: ["f1", "f2"] },
+        { id: "a2", text: "Promote the awards", findingIds: ["f2"] },
+      ],
+    },
+    "live-123",
+  );
+  assert.deepEqual(r.findings.map((f) => f.id), ["f1"]);
+  assert.deepEqual(r.actions.map((a) => [a.id, a.findingIds]), [["a1", ["f1"]]]);
+  assert.ok(r.uncertainties.some((u) => u.startsWith("1 statement was removed")));
+});
+test("a rejected summary reports which check failed", async () => {
+  const { buildLiveReport } = await import("../src/domain/research.js");
+  assert.throws(
+    () => buildLiveReport(input, evidence, { ...output, summary: "This business has no website." }, "live-123"),
+    /research_unsupported_summary/,
+  );
 });

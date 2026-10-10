@@ -41,7 +41,10 @@ export const reportResultSchema = z.object({
 });
 export const reportDiagnosticsSchema = reportResultSchema
   .omit({ report: true })
-  .extend({ failure: z.enum(["validation_failed", "provider_failed"]) });
+  .extend({
+    failure: z.enum(["validation_failed", "provider_failed"]),
+    check: z.string().max(60).optional(),
+  });
 const common = {
   id: z.string(),
   state: z.enum(["running", "ready", "partial", "failed"]),

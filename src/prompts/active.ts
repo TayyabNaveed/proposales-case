@@ -1,4 +1,4 @@
-import { definition as research } from "./research-report/v3.js";
+import { definition as research } from "./research-report/v4.js";
 import { definition as selection } from "./service-recommendation/v1.js";
 export const activePrompts = { research, selection } as const;
 export type PromptDefinition = {
