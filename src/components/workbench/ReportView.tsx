@@ -1,11 +1,45 @@
 import type { ReportV2 } from "../../domain/reports";
 import { friendlyDate } from "./api";
+import { splitEvidence } from "../../domain/research";
 export function ReportView({ report }: { report: ReportV2 }) {
+  // Synthetic examples keep every owner excerpt together; live reports lead
+  // with the sources their findings cite.
+  const { cited, other } =
+    report.mode === "synthetic"
+      ? { cited: report.evidence, other: [] }
+      : splitEvidence(report);
+  const source = (e: ReportV2["evidence"][number]) => (
+    <article key={e.id}>
+      <h3>
+        {e.url ? (
+          <a href={e.url} target="_blank" rel="noopener noreferrer">
+            {e.label}
+          </a>
+        ) : (
+          e.label
+        )}
+      </h3>
+      <small>
+        {e.synthetic
+          ? "Fictional owner information"
+          : `Retrieved ${friendlyDate(e.retrievedAt)}`}
+      </small>
+      <blockquote>{e.excerpt}</blockquote>
+    </article>
+  );
   return (
     <section className="report">
       <p className="eyebrow">01 / UNDERSTAND</p>
       <h2>{report.businessName}</h2>
       <p className="summary">{report.summary}</p>
+      {report.identityStatus === "ambiguous" && (
+        <p className="identity-notice" role="status">
+          <strong>Business not confirmed.</strong> Public sources didn’t clearly
+          match this name and location, so no services are suggested yet. Add
+          the business website or exact street address above and choose
+          Analyse business again.
+        </p>
+      )}
       {report.mode === "live" && (
         <p className="freshness">
           Researched {friendlyDate(report.evidence[0]?.retrievedAt)}
@@ -50,7 +84,7 @@ export function ReportView({ report }: { report: ReportV2 }) {
           className="principle"
           open={report.identityStatus === "ambiguous"}
         >
-          <summary>Needs confirmation ({report.uncertainties.length})</summary>
+          <summary>Open questions ({report.uncertainties.length})</summary>
           <ul>
             {report.uncertainties.map((u) => (
               <li key={u}>{u}</li>
@@ -68,28 +102,16 @@ export function ReportView({ report }: { report: ReportV2 }) {
         <summary>
           {report.mode === "synthetic"
             ? "Example evidence"
-            : "Sources and supporting excerpts"}{" "}
-          ({report.evidence.length})
+            : "Sources used in this report"}{" "}
+          ({cited.length})
         </summary>
-        {report.evidence.map((e) => (
-          <article key={e.id}>
-            <h3>
-              {e.url ? (
-                <a href={e.url} target="_blank" rel="noopener noreferrer">
-                  {e.label}
-                </a>
-              ) : (
-                e.label
-              )}
-            </h3>
-            <small>
-              {e.synthetic
-                ? "Fictional owner information"
-                : `Retrieved ${friendlyDate(e.retrievedAt)}`}
-            </small>
-            <blockquote>{e.excerpt}</blockquote>
-          </article>
-        ))}
+        {cited.map(source)}
+        {!!other.length && (
+          <details className="other-sources">
+            <summary>Other results searched ({other.length})</summary>
+            {other.map(source)}
+          </details>
+        )}
       </details>
       <p className="caption">
         Public-source statements can include opinions or outdated information.

@@ -75,7 +75,7 @@ function makeReport(search: any): any {
       result: {
         report: liveReport(search.input.businessName, id),
         model: "synthetic-browser-fixture",
-        promptVersion: "research-report-2",
+        promptVersion: "research-report-3",
         attempts: 1,
         durationMs: 1,
         usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },

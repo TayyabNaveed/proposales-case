@@ -148,3 +148,13 @@ Final HTTP integration passed (1/1): unauthorised/cross-origin writes rejected, 
 
 - Live proposal-2 smoke draft failed fidelity on `images` only. Read-only retrieval showed Proposales fills an empty image list with the library item's image. Ruling: send each library image explicitly. Provider state is unchanged and fidelity stays exact. Cost: lead-only imagery cannot be expressed at creation. RED→GREEN regression in tests/refinement.test.ts.
 - Final: 122/122 offline, typecheck/build, isolated DB 9/9, HTTP 1/1. Existing smoke draft verified on status read with no new creation or PATCH; repeat identity reused; Phase 4 draft still confirmed. See QUALITY-REFINEMENT.md. No email or recipient.
+
+## 10 October 2026 — Live identity fixes after production testing
+
+- Tayyab's live Uppsala tests stayed ambiguous, for three reasons found in saved runs.
+  - English filler queries returned foreign workshops.
+  - One unverified directory with an older address blocked an otherwise matching listing.
+  - The server check needed the whole typed location, and the exact name, in one sentence, so a street address or a Swedish possessive ("Stadsmissionens") failed.
+- Ruling: quote the exact name and drop filler (search `tavily-basic-2`). Accept any part or place word of the supplied location, plus a possessive s per name word (`research-validation-3`). Prompt `research-report-3` treats conflicting or unverified listings as uncertainties. Page titles still do not count as identity support. Cost: city-level matches remain as permissive as before, and this is lexical support, not proof.
+- UI: an unconfirmed business shows a clear "Business not confirmed" notice with the next step. "Needs confirmation" was renamed "Open questions", because there is no confirm action. Live sources list the cited ones first and fold the rest under "Other results searched".
+- RED→GREEN: identity, query, evidence-split, possessive-name and prompt-version tests. Full suite 127/127, typecheck/build, DB 9/9. Replay against saved runs: Ekeby with an address now passes the server check; unrelated "Ekeby" businesses still fail. No paid calls were made for verification; Tayyab tests live.

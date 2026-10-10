@@ -735,3 +735,14 @@ h1 {
     font-size: 24px;
   }
 }
+.identity-notice {
+  margin: 16px 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--ink);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  font-size: 14px;
+}
+.other-sources {
+  margin-top: 12px;
+  color: var(--muted);
+}

@@ -122,6 +122,7 @@ export function ResearchPanel({
     const rev = revision.current;
     active.current = true;
     setMessage("");
+    let analysed: ReportV2 | null = null;
     try {
       const input = researchInputSchema.parse({
         businessName,
@@ -153,12 +154,19 @@ export function ResearchPanel({
           setReport(r);
           save("case-research-report", r.id);
         },
-        onReport,
+        onReport: (r: ReportV2) => {
+          analysed = r;
+          onReport(r);
+        },
         onProgress: setBusy,
         recommend: onRecommend,
       } as Parameters<typeof analyseBusiness>[0]);
       if (revision.current === rev)
-        setMessage("Analysis complete. Review the suggested scope below.");
+        setMessage(
+          (analysed as ReportV2 | null)?.identityStatus === "ambiguous"
+            ? "We couldn’t confirm this business from public sources, so no services are suggested. Add its website or exact street address and analyse again."
+            : "Analysis complete. Review the suggested scope below.",
+        );
     } catch (e) {
       if (revision.current === rev)
         setMessage(

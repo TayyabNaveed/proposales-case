@@ -80,22 +80,57 @@ const normal = (s: string) =>
     .replace(/\p{M}/gu, "")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
-export function identitySupported(input: ResearchInput, evidence: Evidence[]) {
+// A detailed address must not make matching harder: any comma-separated part or
+// place word (4+ letters) of the supplied location counts beside the exact name.
+function locationTerms(location: string) {
+  const parts = location.split(",").map(normal).filter(Boolean);
+  const words = parts.flatMap((p) =>
+    p.split(" ").filter((w) => w.length >= 4 && !/\d/.test(w)),
+  );
+  return [...new Set([normal(location), ...parts, ...words])];
+}
+export function identitySupported(
+  input: Pick<ResearchInput, "businessName" | "location">,
+  evidence: Evidence[],
+) {
+  // Each name word may carry a possessive s ("Stadsmissionens Second Hand").
+  const name = new RegExp(
+      "(?:^| )" +
+        normal(input.businessName)
+          .split(" ")
+          .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "s?")
+          .join(" ") +
+        "(?= |$)",
+    ),
+    terms = locationTerms(input.location);
   return evidence.some((e) =>
     e.excerpt.split(/[.!?\n]/).some((sentence) => {
       const s = normal(sentence),
-        name = normal(input.businessName),
-        location = normal(input.location);
-      const n = s.indexOf(name),
-        l = s.indexOf(location);
+        match = name.exec(s),
+        n = match ? match.index : -1,
+        end = match ? n + match[0].length : 0;
+      // Exclude the name itself, so "Uppsala Bil" alone cannot match "Uppsala".
+      const around =
+        s.slice(Math.max(0, n - 200), Math.max(0, n)) +
+        " " +
+        s.slice(end, end + 200);
       return (
         n >= 0 &&
-        l >= 0 &&
-        Math.abs(n - l) < 200 &&
+        terms.some((t) => around.includes(t)) &&
         !/\b(other|unrelated|different|not|rather)\b/.test(s)
       );
     }),
   );
+}
+export function splitEvidence<E extends { id: string }>(report: {
+  evidence: E[];
+  findings: { evidenceIds: string[] }[];
+}) {
+  const used = new Set(report.findings.flatMap((f) => f.evidenceIds));
+  return {
+    cited: report.evidence.filter((e) => used.has(e.id)),
+    other: report.evidence.filter((e) => !used.has(e.id)),
+  };
 }
 export function buildLiveReport(
   input: ResearchInput,

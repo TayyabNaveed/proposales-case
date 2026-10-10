@@ -428,3 +428,66 @@ test("recovered transient searches do not claim complete credit usage for the fa
   assert.equal(r.attempts, 4);
   assert.equal(r.credits, null);
 });
+test("a detailed address confirms identity from name plus a supplied location term, while other names do not", async () => {
+  const { identitySupported } = await import("../src/domain/research.js");
+  const workshop = {
+    businessName: "Ekeby Autoservice",
+    location: "Ekebyvägen 25, 752 63 Uppsala",
+  };
+  const listing = (excerpt: string) => [{ ...evidence[0], excerpt }];
+  assert.equal(
+    identitySupported(workshop, listing("Ekeby Autoservice är verksam i Uppsala. Leveransadress Ekebyvägen 25")),
+    true,
+  );
+  assert.equal(
+    identitySupported(workshop, listing("EKEBY STÄD in Uppsala, 752 75 Uppsala Sweden")),
+    false,
+  );
+  assert.equal(
+    identitySupported(workshop, listing("Ekeby Autoservice is not in Uppsala.")),
+    false,
+  );
+  assert.equal(
+    identitySupported(input, listing("Juniper Ceramics is located in Gothenburg.")),
+    false,
+  );
+});
+test("search queries use the exact business name without English filler and a new cache version", async () => {
+  const { searchBusiness, searchVersion } =
+    await import("../src/server/providers/research.js");
+  assert.equal(searchVersion, "tavily-basic-2");
+  const queries: string[] = [];
+  await searchBusiness(
+    { businessName: "Ekeby Autoservice", location: "Uppsala", website: undefined },
+    {
+      apiKey: "synthetic",
+      fetch: async (_url, init) => {
+        queries.push(JSON.parse(init!.body as string).query);
+        return Response.json({ results: [], usage: { credits: 1 } });
+      },
+    },
+  );
+  assert.equal(queries.length, 3);
+  for (const q of queries) {
+    assert.ok(q.startsWith('"Ekeby Autoservice" Uppsala'), q);
+    assert.ok(!/official|website services|booking services|business profile/.test(q), q);
+  }
+});
+test("report evidence lists cited sources before other search results", async () => {
+  const { splitEvidence } = await import("../src/domain/research.js");
+  const e = (id: string) => ({ ...evidence[0], id });
+  const { cited, other } = splitEvidence({
+    evidence: [e("s1"), e("s2"), e("s3")],
+    findings: [{ evidenceIds: ["s3"] }, { evidenceIds: ["s3", "s1"] }],
+  });
+  assert.deepEqual(cited.map((x) => x.id), ["s1", "s3"]);
+  assert.deepEqual(other.map((x) => x.id), ["s2"]);
+});
+test("name matching tolerates a possessive s, as in Swedish listings, but not other words", async () => {
+  const { identitySupported } = await import("../src/domain/research.js");
+  const shop = { businessName: "Stadsmissionen Second Hand", location: "Uppsala" };
+  const listing = (excerpt: string) => [{ ...evidence[0], excerpt }];
+  assert.equal(identitySupported(shop, listing("Stadsmissionens Second Hand in Uppsala")), true);
+  assert.equal(identitySupported(shop, listing("Stadsmissionen Second Handbags in Uppsala")), false);
+  assert.equal(identitySupported(shop, listing("Stadsmissionen Second Hand, Köpmangatan 15, Stockholm")), false);
+});

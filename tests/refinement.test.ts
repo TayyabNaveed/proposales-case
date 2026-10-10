@@ -119,9 +119,14 @@ test("canonical extraction preserves bytes, arrays and legacy exports", async ()
 });
 test("extracted active prompts preserve exact shipped text and record operational/template provenance", async () => {
   const { activePrompts } = await import("../src/prompts/active.js");
+  const { definition: researchV2 } =
+    await import("../src/prompts/research-report/v2.js");
   const hash = (s: string) => createHash("sha256").update(s).digest("hex");
+  // research-report-2 stays byte-identical for replay; research-report-3 is active.
+  assert.equal(activePrompts.research.version, "research-report-3");
+  assert.match(activePrompts.research.system, /unverified|older listing/i);
   assert.equal(
-    hash(activePrompts.research.system),
+    hash(researchV2.system),
     "aa80bde27622f20ab4b0e61c80e2670596a022a8fa8f37fd8492c5076a84fe9d",
   );
   assert.equal(

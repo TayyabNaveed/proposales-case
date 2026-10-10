@@ -23,7 +23,7 @@ import {
   type ResearchInput,
   type Evidence,
 } from "../../domain/research.js";
-export const searchVersion = "tavily-basic-1",
+export const searchVersion = "tavily-basic-2",
   reportPromptVersion = activePrompts.research.version;
 const transportSchema = z.object({
   results: z
@@ -70,13 +70,12 @@ export async function searchBusiness(
       AbortSignal.timeout(120000),
       ...(options.signal ? [options.signal] : []),
     ]);
-  const base = input.businessName + " " + input.location,
+  // Exact quoted name, no English filler: local listings are often not in English.
+  const base = `"${input.businessName.replace(/"/g, "")}" ${input.location}`,
     queries = [
-      base + " official business website services",
-      base + " contact booking services",
-      base +
-        " business profile" +
-        (input.website ? " " + new URL(input.website).hostname : ""),
+      base,
+      base + " contact",
+      base + (input.website ? " " + new URL(input.website).hostname : " reviews"),
     ];
   let retryAvailable = true,
     attempts = 0,
