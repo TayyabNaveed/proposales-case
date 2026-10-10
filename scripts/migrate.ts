@@ -11,6 +11,7 @@ try {
     "003_recommendations_and_drafts",
     "004_provider_assets",
     "005_research",
+    "006_app_role",
   ]) {
     await pool.query(
       fs.readFileSync("db/migrations/" + migration + ".sql", "utf8"),

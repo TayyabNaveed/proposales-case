@@ -38,3 +38,19 @@ test("session cookies require HTTPS except for explicit local development origin
   assert.throws(() => sessionCookieSecure("http://case.example.com"));
   assert.throws(() => sessionCookieSecure(undefined));
 });
+test("login limits use a hashed per-visitor bucket only behind Vercel, with a global backstop", async () => {
+  const { loginBuckets } = await import("../src/server/access.js");
+  const req = (h: Record<string, string>) =>
+    new Request("https://case.example/api/session", { headers: h });
+  const local = loginBuckets(req({ "x-forwarded-for": "203.0.113.9" }), "s", {});
+  assert.equal(local.length, 1);
+  assert.equal(local[0].limit, 5);
+  const vercel = { VERCEL: "1" };
+  const a = loginBuckets(req({ "x-forwarded-for": "203.0.113.9, 10.0.0.1" }), "s", vercel);
+  const b = loginBuckets(req({ "x-forwarded-for": "198.51.100.4" }), "s", vercel);
+  assert.deepEqual(a.map((x) => x.limit), [5, 30]);
+  assert.notEqual(a[0].bucket, b[0].bucket);
+  assert.equal(a[1].bucket, b[1].bucket);
+  assert.ok(!a[0].bucket.includes("203.0.113.9"));
+  assert.equal(loginBuckets(req({}), "s", vercel).length, 1);
+});

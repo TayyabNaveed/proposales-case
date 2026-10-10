@@ -51,7 +51,7 @@ For a dedicated case database, apply the additive migrations with `npm run db:mi
 
 `npm run probe -- draft` deliberately creates **one unsent, recipient-free, description-only discovery draft**. A durable operation key makes repeat runs reuse its result. `npm run probe -- verify-draft` only retrieves/verifies it. Private IDs are saved under ignored `private/`. The command does not create priced content or send email. Unknown/unfinished operation outcomes require reconciliation; do not delete operation rows to force another attempt.
 
-The CLI is an operator tool. The UI uses signed demo sessions and exact-origin checks for AI calls and real account-backed unsent draft creation. The database connection currently uses the configured project role; introduce a least-privilege application role before deployment.
+The CLI is an operator tool. The UI uses signed demo sessions and exact-origin checks for AI calls and real account-backed unsent draft creation. Migrations and operator scripts use the project role. The hosted app connects as `case_app`, which can only read, insert and update `case_workflow` rows (see `db/migrations/006_app_role.sql`). In the Vercel `DATABASE_URL`, use the pooler user `case_app.<project-ref>`.
 
 ## Current evidence and limits
 
@@ -74,7 +74,7 @@ Open http://127.0.0.1:3001. `APP_ORIGIN` must exactly match the browser origin. 
 
 The local server may already be running on port 3001. Avoid starting a second instance on the same port. For a production build, use `npm run build` then `npm run start -- --port 3001`.
 
-Login currently uses a conservative global database-backed limit of five attempts per minute, without trusting forwarding headers. Configure trusted proxy identity and a least-privilege database role before hosting. This is a single shared demo reviewer identity, not a production multi-user identity system.
+Login allows five attempts per minute per visitor on Vercel, where the platform sets `x-forwarded-for`, plus a global cap of 30 per minute. Elsewhere forwarding headers are not trusted, and a single global limit of five applies. Visitor addresses are stored only as keyed hashes. This is a single shared demo reviewer identity, not a production multi-user identity system.
 
 `npm run test:db` verifies operation/snapshot/recommendation/asset/access persistence in isolated schemas. `npm run test:http` checks the running local app without model or proposal creation. See [code walkthrough](docs/WALKTHROUGH.md).
 

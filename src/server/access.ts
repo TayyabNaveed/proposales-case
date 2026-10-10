@@ -68,3 +68,23 @@ export function sessionCookieSecure(origin: string | undefined) {
     return false;
   throw new Error("access_unconfigured");
 }
+// Vercel overwrites x-forwarded-for with the client address, so it is trusted only
+// there. Elsewhere one global bucket applies. Addresses are stored only as HMACs.
+export function loginBuckets(
+  req: Request,
+  secret: string,
+  env: Record<string, string | undefined> = process.env,
+) {
+  const key = (name: string) =>
+    createHmac("sha256", secret).update(name).digest("hex");
+  const global = { bucket: key("reviewer-login-global"), limit: 5 };
+  const ip =
+    env.VERCEL === "1"
+      ? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      : undefined;
+  if (!ip || ip.length > 64) return [global];
+  return [
+    { bucket: key("reviewer-login-ip:" + ip), limit: 5 },
+    { ...global, limit: 30 },
+  ];
+}
