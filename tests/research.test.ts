@@ -23,7 +23,17 @@ function assertDropped(build: () => { findings: unknown[]; actions: unknown[]; u
   assert.ok(r.uncertainties.some((u) => /removed because the sources did not support/.test(u)));
 }
 const output = {
-  identityStatus: "confirmed",
+  identity: {
+      status: "confirmed",
+      reason: "One listing names the studio in Stockholm.",
+      candidates: [
+        {
+          sourceIds: ["s1"],
+          name: { sourceId: "s1", text: "Juniper Ceramics" },
+          location: { sourceId: "s1", text: "Stockholm" },
+        },
+      ],
+    },
   summary: "A pottery studio offers beginner classes.",
   findings: [
     {
@@ -84,7 +94,8 @@ test("ambiguous name/location remains ambiguous and fabricated source quotations
   const { buildLiveReport } = await import("../src/domain/research.js");
   assert.equal(
     buildLiveReport(
-      { ...input, location: "Malmo" },
+      // Without the website anchor, a location the sources contradict stays ambiguous.
+      { ...input, website: undefined, location: "Malmo" },
       evidence,
       output,
       "live-123",
@@ -314,11 +325,19 @@ test("inferred absence with qualifiers and mixed-business identity cannot become
         "Juniper Ceramics is located in Gothenburg. Other studios operate in Stockholm.",
     },
   ];
+  // Code verifies that identity quotes exist; it cannot tell that "Stockholm"
+  // here describes other studios. That judgement is the model's, and the quotes
+  // are shown to the user. A model ambiguity verdict always stands.
   assert.equal(
     buildLiveReport(
       input,
       conflicting,
-      { ...output, findings: [], actions: [] },
+      {
+        ...output,
+        identity: { ...output.identity, status: "ambiguous" },
+        findings: [],
+        actions: [],
+      },
       "live-123",
     ).identityStatus,
     "ambiguous",
@@ -433,30 +452,6 @@ test("recovered transient searches do not claim complete credit usage for the fa
   assert.equal(r.attempts, 4);
   assert.equal(r.credits, null);
 });
-test("a detailed address confirms identity from name plus a supplied location term, while other names do not", async () => {
-  const { identitySupported } = await import("../src/domain/research.js");
-  const workshop = {
-    businessName: "Ekeby Autoservice",
-    location: "Ekebyvägen 25, 752 63 Uppsala",
-  };
-  const listing = (excerpt: string) => [{ ...evidence[0], excerpt }];
-  assert.equal(
-    identitySupported(workshop, listing("Ekeby Autoservice är verksam i Uppsala. Leveransadress Ekebyvägen 25")),
-    true,
-  );
-  assert.equal(
-    identitySupported(workshop, listing("EKEBY STÄD in Uppsala, 752 75 Uppsala Sweden")),
-    false,
-  );
-  assert.equal(
-    identitySupported(workshop, listing("Ekeby Autoservice is not in Uppsala.")),
-    false,
-  );
-  assert.equal(
-    identitySupported(input, listing("Juniper Ceramics is located in Gothenburg.")),
-    false,
-  );
-});
 test("search queries use the exact business name without English filler and a new cache version", async () => {
   const { searchBusiness, searchVersion } =
     await import("../src/server/providers/research.js");
@@ -488,15 +483,6 @@ test("report evidence lists cited sources before other search results", async ()
   assert.deepEqual(cited.map((x) => x.id), ["s1", "s3"]);
   assert.deepEqual(other.map((x) => x.id), ["s2"]);
 });
-test("name matching tolerates a possessive s, as in Swedish listings, but not other words", async () => {
-  const { identitySupported } = await import("../src/domain/research.js");
-  const shop = { businessName: "Stadsmissionen Second Hand", location: "Uppsala" };
-  const listing = (excerpt: string) => [{ ...evidence[0], excerpt }];
-  assert.equal(identitySupported(shop, listing("Stadsmissionens Second Hand in Uppsala")), true);
-  assert.equal(identitySupported(shop, listing("Stadsmissionen Second Handbags in Uppsala")), false);
-  assert.equal(identitySupported(shop, listing("Stadsmissionen Second Hand, Köpmangatan 15, Stockholm")), false);
-});
-
 test("one unsupported finding is dropped without discarding the supported report", async () => {
   const { buildLiveReport } = await import("../src/domain/research.js");
   const r = buildLiveReport(

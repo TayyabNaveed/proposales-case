@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { identityOutputSchema, rejectionCodes } from "./identity.js";
 const id = z.string().min(1);
 const capability = z
   .object({
@@ -14,6 +15,18 @@ export const reportSchema = z
     businessName: id,
     summary: id,
     identityStatus: z.enum(["confirmed", "ambiguous"]),
+    // Live reports only: verified identity evidence. Absent on examples and on
+    // reports created before research-validation-5.
+    identity: z
+      .object({
+        reason: id,
+        matchedSourceIds: z.array(id),
+        candidates: identityOutputSchema.shape.candidates,
+        // Why candidates the model proposed were removed; codes only.
+        rejected: z.array(z.enum(rejectionCodes)),
+      })
+      .strict()
+      .optional(),
     goals: z.array(z.object({ text: id, sourceId: id }).strict()),
     capabilities: z
       .object({
@@ -64,9 +77,23 @@ export const reportSchema = z
     if (
       r.goals.some((g) => !evidence.has(g.sourceId)) ||
       r.findings.some((f) => f.evidenceIds.some((e) => !evidence.has(e))) ||
-      r.actions.some((a) => a.findingIds.some((f) => !findings.has(f)))
+      r.actions.some((a) => a.findingIds.some((f) => !findings.has(f))) ||
+      (r.identity &&
+        [
+          ...r.identity.matchedSourceIds,
+          ...r.identity.candidates.flatMap((c) => [
+            ...c.sourceIds,
+            c.name.sourceId,
+            ...(c.location ? [c.location.sourceId] : []),
+          ]),
+        ].some((e) => !evidence.has(e)))
     )
       bad("broken_reference");
+    if (
+      r.identity &&
+      (r.identityStatus === "confirmed") !== r.identity.matchedSourceIds.length > 0
+    )
+      bad("identity_mismatch");
     for (const c of Object.values(r.capabilities))
       if (
         (c.status !== "unknown" && !c.evidenceIds.length) ||

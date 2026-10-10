@@ -27,6 +27,21 @@ Examples: public synthetic reports + recorded recommendations → authenticated 
 
 Creation: `POST /api/drafts` → scope-owned existing request lookup or fresh validated snapshot → durable operation claim → recipient-free Proposales create → saved UUID/link → fidelity read. Repeated requests reuse the immutable snapshot, even after recommendation/report expiry. Materially different payloads conflict. Status reads may reconcile exactly one matching provider result; missing/ambiguous matches never permit another create.
 
+## Business identity
+
+The model decides which business the sources describe and returns its evidence: up to three candidates, each with source IDs, a name quote and an optional location quote copied from one source (`domain/identity.ts`). Code checks only what it can check in any language:
+
+- Each quote appears in its source after Unicode normalisation, case folding and whitespace collapse.
+- The quoted name contains the typed name: character-bigram containment, so it needs no word boundaries.
+- The candidate is anchored by one of three routes:
+  - its source is on the supplied website;
+  - the typed location appears as continuous text in that source;
+  - the model's location quote from that source resembles the typed location.
+
+Unverified candidates are removed and their rejection codes kept. Identity is confirmed only for exactly one verified candidate, and only when the model agreed or every competing candidate was verifiably in another location. An unconfirmed business gets no service suggestions. The UI shows the matched quotes, or the verified candidates.
+
+Code cannot judge meaning. If an excerpt names the business next to a place that refers to something else, the model's judgement decides, and the quotes are shown so a person can see why. `evals/identity` measures this on fictional cases; real-business cases stay private.
+
 ## Identities and compatibility
 
 `server/canonical.ts` preserves historical canonical JSON/hash bytes. Alphabetic service order remains canonical. `domain/presentation.ts` independently orders core/foundational work, supporting work, monthly services and optional extras.

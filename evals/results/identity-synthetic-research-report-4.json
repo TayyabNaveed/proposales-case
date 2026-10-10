@@ -1,0 +1,148 @@
+{
+ "summary": {
+  "promptVersion": "research-report-4",
+  "validationVersion": "research-validation-4",
+  "model": "deepseek-flash",
+  "ranAt": "2026-10-10T21:58:16.886Z",
+  "cases": 11,
+  "statusMatches": 7,
+  "sourceChecks": 0,
+  "sourceMatches": 0,
+  "failedReports": 1
+ },
+ "results": [
+  {
+   "id": "exact-match",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 872,
+    "outputTokens": 640,
+    "cacheReadTokens": 512
+   }
+  },
+  {
+   "id": "inflected-name",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 793,
+    "outputTokens": 304,
+    "cacheReadTokens": 512
+   }
+  },
+  {
+   "id": "legal-suffix",
+   "expected": "confirmed",
+   "status": "ambiguous",
+   "statusMatches": false,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 768,
+    "outputTokens": 390,
+    "cacheReadTokens": 512
+   }
+  },
+  {
+   "id": "same-name-elsewhere",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 857,
+    "outputTokens": 432,
+    "cacheReadTokens": 640
+   }
+  },
+  {
+   "id": "two-in-same-city",
+   "expected": "ambiguous",
+   "status": "ambiguous",
+   "statusMatches": true,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 864,
+    "outputTokens": 361,
+    "cacheReadTokens": 640
+   }
+  },
+  {
+   "id": "not-found",
+   "expected": "ambiguous",
+   "status": "ambiguous",
+   "statusMatches": true,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 853,
+    "outputTokens": 352,
+    "cacheReadTokens": 640
+   }
+  },
+  {
+   "id": "detailed-address",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 796,
+    "outputTokens": 441,
+    "cacheReadTokens": 640
+   }
+  },
+  {
+   "id": "older-listing",
+   "expected": "confirmed",
+   "status": "failed",
+   "statusMatches": false,
+   "sourcesMatch": null,
+   "check": "output_schema",
+   "usage": {
+    "inputTokens": 873,
+    "outputTokens": 514,
+    "cacheReadTokens": 640
+   }
+  },
+  {
+   "id": "no-spaces-script",
+   "expected": "confirmed",
+   "status": "ambiguous",
+   "statusMatches": false,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 847,
+    "outputTokens": 384,
+    "cacheReadTokens": 640
+   }
+  },
+  {
+   "id": "own-website",
+   "expected": "confirmed",
+   "status": "ambiguous",
+   "statusMatches": false,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 775,
+    "outputTokens": 268,
+    "cacheReadTokens": 640
+   }
+  },
+  {
+   "id": "injected-identity",
+   "expected": "ambiguous",
+   "status": "ambiguous",
+   "statusMatches": true,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 856,
+    "outputTokens": 463,
+    "cacheReadTokens": 640
+   }
+  }
+ ]
+}

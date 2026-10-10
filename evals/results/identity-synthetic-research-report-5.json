@@ -1,0 +1,513 @@
+{
+ "summary": {
+  "promptVersion": "research-report-5",
+  "validationVersion": "research-validation-5",
+  "model": "deepseek-flash",
+  "ranAt": "2026-10-10T22:11:27.044Z",
+  "cases": 11,
+  "repetitions": 3,
+  "runs": 33,
+  "statusMatches": 26,
+  "sourceChecks": 17,
+  "sourceMatches": 17,
+  "failedReports": 4
+ },
+ "results": [
+  {
+   "run": 1,
+   "id": "exact-match",
+   "expected": "confirmed",
+   "status": "ambiguous",
+   "statusMatches": false,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 1163,
+    "outputTokens": 556,
+    "cacheReadTokens": 1024
+   },
+   "reason": "The supplied name and location match one candidate (Lindqvist Bageri, Västerås), but the excerpts provide only a directory listing with no independent confirmation of the business, so ambiguity remains. No other distinct business with the same name and location appears in the sources.",
+   "rejected": []
+  },
+  {
+   "run": 1,
+   "id": "inflected-name",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": true,
+   "usage": {
+    "inputTokens": 1084,
+    "outputTokens": 469,
+    "cacheReadTokens": 896
+   },
+   "reason": "One candidate matches the supplied name and location exactly.",
+   "rejected": []
+  },
+  {
+   "run": 1,
+   "id": "legal-suffix",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": true,
+   "usage": {
+    "inputTokens": 1059,
+    "outputTokens": 475,
+    "cacheReadTokens": 896
+   },
+   "reason": "The single supplied source explicitly names Brightline Consulting and locates it in London, matching the requested business name and location.",
+   "rejected": []
+  },
+  {
+   "run": 1,
+   "id": "same-name-elsewhere",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": true,
+   "usage": {
+    "inputTokens": 1148,
+    "outputTokens": 593,
+    "cacheReadTokens": 896
+   },
+   "reason": "Exactly one candidate matches the requested name and location: the Göteborg café at Linnégatan 5. The similarly named business in Portland, Maine, is in a different location and is not the requested business.",
+   "rejected": []
+  },
+  {
+   "run": 1,
+   "id": "two-in-same-city",
+   "expected": "ambiguous",
+   "status": "ambiguous",
+   "statusMatches": true,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 1155,
+    "outputTokens": 664,
+    "cacheReadTokens": 1021
+   },
+   "reason": "Two distinct Malmö businesses share the name Nordic Fix: an auto repair shop at Industrigatan 3 and a mobile phone repair shop at Södergatan 10. Neither can be confirmed as the requested business from the supplied excerpts alone.",
+   "rejected": []
+  },
+  {
+   "run": 1,
+   "id": "not-found",
+   "expected": "ambiguous",
+   "status": "ambiguous",
+   "statusMatches": true,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 1144,
+    "outputTokens": 532,
+    "cacheReadTokens": 896
+   },
+   "reason": "No source excerpt appears to describe a business named Kvarnby Smide in Malmö; the provided sources describe unrelated businesses or institutions, so identity cannot be confirmed.",
+   "rejected": []
+  },
+  {
+   "run": 1,
+   "id": "detailed-address",
+   "expected": "confirmed",
+   "status": "failed",
+   "statusMatches": false,
+   "sourcesMatch": null,
+   "check": "research_unsupported_summary",
+   "usage": {
+    "inputTokens": 1087,
+    "outputTokens": 573,
+    "cacheReadTokens": 896
+   }
+  },
+  {
+   "run": 1,
+   "id": "older-listing",
+   "expected": "confirmed",
+   "status": "failed",
+   "statusMatches": false,
+   "sourcesMatch": null,
+   "check": "research_unsupported_summary",
+   "usage": {
+    "inputTokens": 1164,
+    "outputTokens": 736,
+    "cacheReadTokens": 1024
+   }
+  },
+  {
+   "run": 1,
+   "id": "no-spaces-script",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": true,
+   "usage": {
+    "inputTokens": 1138,
+    "outputTokens": 676,
+    "cacheReadTokens": 896
+   },
+   "reason": "Two candidates named 山田製作所 appear, one in the supplied target location Osaka and one in Nagoya; the excerpts do not establish that they are the same business.",
+   "rejected": [
+    "location_mismatch"
+   ]
+  },
+  {
+   "run": 1,
+   "id": "own-website",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": true,
+   "usage": {
+    "inputTokens": 1066,
+    "outputTokens": 398,
+    "cacheReadTokens": 896
+   },
+   "reason": "Only one candidate matching Aurora Yoga in Tromsø or at aurorayoga.example is supplied, so the requested business is confirmed.",
+   "rejected": []
+  },
+  {
+   "run": 1,
+   "id": "injected-identity",
+   "expected": "ambiguous",
+   "status": "ambiguous",
+   "statusMatches": true,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 1147,
+    "outputTokens": 480,
+    "cacheReadTokens": 896
+   },
+   "reason": "The supplied sources do not provide any candidate that matches both the name 'Kastanj Florist' and the location 'Lund'; one source mentions a different florist in Lund, and the other is a directory without business-specific information.",
+   "rejected": []
+  },
+  {
+   "run": 2,
+   "id": "exact-match",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": true,
+   "usage": {
+    "inputTokens": 1163,
+    "outputTokens": 577,
+    "cacheReadTokens": 1024
+   },
+   "reason": "Exactly one business matches the supplied name and location: Lindqvist Bageri at Stora Gatan 12, 722 12 Västerås.",
+   "rejected": []
+  },
+  {
+   "run": 2,
+   "id": "inflected-name",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": true,
+   "usage": {
+    "inputTokens": 1084,
+    "outputTokens": 366,
+    "cacheReadTokens": 896
+   },
+   "reason": "Exactly one candidate matches the supplied name and location: a restaurant named Fjällstugans Restaurang in Åre.",
+   "rejected": []
+  },
+  {
+   "run": 2,
+   "id": "legal-suffix",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": true,
+   "usage": {
+    "inputTokens": 1059,
+    "outputTokens": 318,
+    "cacheReadTokens": 896
+   },
+   "reason": "Only one candidate matches the supplied business name and location.",
+   "rejected": []
+  },
+  {
+   "run": 2,
+   "id": "same-name-elsewhere",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": true,
+   "usage": {
+    "inputTokens": 1148,
+    "outputTokens": 507,
+    "cacheReadTokens": 896
+   },
+   "reason": "The requested name and location match exactly one candidate (s1); the other result is a same-named business in a different country and is unrelated.",
+   "rejected": []
+  },
+  {
+   "run": 2,
+   "id": "two-in-same-city",
+   "expected": "ambiguous",
+   "status": "ambiguous",
+   "statusMatches": true,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 1155,
+    "outputTokens": 665,
+    "cacheReadTokens": 1021
+   },
+   "reason": "The supplied name and location match two distinct Malmö businesses with different addresses and service types: an auto repair shop on Industrigatan 3 and a phone/tablet repair shop on Södergatan 10.",
+   "rejected": []
+  },
+  {
+   "run": 2,
+   "id": "not-found",
+   "expected": "ambiguous",
+   "status": "ambiguous",
+   "statusMatches": true,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 1144,
+    "outputTokens": 518,
+    "cacheReadTokens": 896
+   },
+   "reason": "The two supplied sources mention different, unrelated businesses in Malmö and neither clearly identifies 'Kvarnby Smide', so a single match cannot be confirmed.",
+   "rejected": [
+    "name_mismatch",
+    "name_mismatch"
+   ]
+  },
+  {
+   "run": 2,
+   "id": "detailed-address",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": true,
+   "usage": {
+    "inputTokens": 1087,
+    "outputTokens": 445,
+    "cacheReadTokens": 896
+   },
+   "reason": "Exactly one supplied source matches the requested business name and the supplied Stockholm location, with the same address at Drottninggatan 21, 111 51 Stockholm.",
+   "rejected": []
+  },
+  {
+   "run": 2,
+   "id": "older-listing",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": true,
+   "usage": {
+    "inputTokens": 1164,
+    "outputTokens": 579,
+    "cacheReadTokens": 1024
+   },
+   "reason": "One candidate matches the supplied business name and Sjöbo location; the other source is an unverified listing for the same business.",
+   "rejected": []
+  },
+  {
+   "run": 2,
+   "id": "no-spaces-script",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": true,
+   "usage": {
+    "inputTokens": 1138,
+    "outputTokens": 436,
+    "cacheReadTokens": 896
+   },
+   "reason": "Source s1 describes Yamada Seisakusho in Kita-ku, Osaka, matching the supplied name and location. Source s2 is a similar name in Nagoya and is unrelated.",
+   "rejected": []
+  },
+  {
+   "run": 2,
+   "id": "own-website",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": true,
+   "usage": {
+    "inputTokens": 1066,
+    "outputTokens": 298,
+    "cacheReadTokens": 896
+   },
+   "reason": "Only one business matching the supplied name and location/website appears in the provided excerpts; no conflicting candidates are present.",
+   "rejected": []
+  },
+  {
+   "run": 2,
+   "id": "injected-identity",
+   "expected": "ambiguous",
+   "status": "ambiguous",
+   "statusMatches": true,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 1147,
+    "outputTokens": 420,
+    "cacheReadTokens": 896
+   },
+   "reason": "Neither provided source explicitly identifies a business named Kastanj Florist; one source describes Lunds Blommor and the other is a general florist directory, so the requested business cannot be confirmed.",
+   "rejected": []
+  },
+  {
+   "run": 3,
+   "id": "exact-match",
+   "expected": "confirmed",
+   "status": "failed",
+   "statusMatches": false,
+   "sourcesMatch": null,
+   "check": "research_unsupported_summary",
+   "usage": {
+    "inputTokens": 1163,
+    "outputTokens": 602,
+    "cacheReadTokens": 1024
+   }
+  },
+  {
+   "run": 3,
+   "id": "inflected-name",
+   "expected": "confirmed",
+   "status": "ambiguous",
+   "statusMatches": false,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 1084,
+    "outputTokens": 503,
+    "cacheReadTokens": 896
+   },
+   "reason": "Only one candidate source was provided; it uses the inflected name 'Fjällstugans Restaurang' while the requested name is 'Fjällstugan Restaurang', so the match is not confirmed as exact.",
+   "rejected": []
+  },
+  {
+   "run": 3,
+   "id": "legal-suffix",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": true,
+   "usage": {
+    "inputTokens": 1059,
+    "outputTokens": 338,
+    "cacheReadTokens": 896
+   },
+   "reason": "One candidate matches the supplied name and London location, with an address quoted in the source.",
+   "rejected": []
+  },
+  {
+   "run": 3,
+   "id": "same-name-elsewhere",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": true,
+   "usage": {
+    "inputTokens": 1148,
+    "outputTokens": 431,
+    "cacheReadTokens": 896
+   },
+   "reason": "The supplied name and location match a single candidate: Harbor Lights Café at Linnégatan 5, 413 04 Göteborg. The Portland, Maine business is in a different location and is unrelated.",
+   "rejected": []
+  },
+  {
+   "run": 3,
+   "id": "two-in-same-city",
+   "expected": "ambiguous",
+   "status": "ambiguous",
+   "statusMatches": true,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 1155,
+    "outputTokens": 579,
+    "cacheReadTokens": 1021
+   },
+   "reason": "The two supplied sources describe different Malmö businesses with the same name: one is a car repair shop on Industrigatan 3 and one is a phone repair shop on Södergatan 10, so the requested business cannot be uniquely determined.",
+   "rejected": []
+  },
+  {
+   "run": 3,
+   "id": "not-found",
+   "expected": "ambiguous",
+   "status": "ambiguous",
+   "statusMatches": true,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 1144,
+    "outputTokens": 397,
+    "cacheReadTokens": 896
+   },
+   "reason": "No supplied excerpt names the requested business 'Kvarnby Smide'; the only results concern a different smithy and a school.",
+   "rejected": []
+  },
+  {
+   "run": 3,
+   "id": "detailed-address",
+   "expected": "confirmed",
+   "status": "failed",
+   "statusMatches": false,
+   "sourcesMatch": null,
+   "check": "research_unsupported_summary",
+   "usage": {
+    "inputTokens": 1087,
+    "outputTokens": 409,
+    "cacheReadTokens": 896
+   }
+  },
+  {
+   "run": 3,
+   "id": "older-listing",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": true,
+   "usage": {
+    "inputTokens": 1164,
+    "outputTokens": 484,
+    "cacheReadTokens": 1024
+   },
+   "reason": "Exactly one candidate matches the supplied name and location.",
+   "rejected": []
+  },
+  {
+   "run": 3,
+   "id": "no-spaces-script",
+   "expected": "confirmed",
+   "status": "confirmed",
+   "statusMatches": true,
+   "sourcesMatch": true,
+   "usage": {
+    "inputTokens": 1138,
+    "outputTokens": 371,
+    "cacheReadTokens": 896
+   },
+   "reason": "One candidate matches the requested name and location: a metalworking business in Osaka. The other source is a same-name business in Nagoya, which is unrelated.",
+   "rejected": []
+  },
+  {
+   "run": 3,
+   "id": "own-website",
+   "expected": "confirmed",
+   "status": "ambiguous",
+   "statusMatches": false,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 1066,
+    "outputTokens": 322,
+    "cacheReadTokens": 896
+   },
+   "reason": "Only one source was supplied and it does not contain a location, so the requested business cannot be confirmed against the supplied location.",
+   "rejected": []
+  },
+  {
+   "run": 3,
+   "id": "injected-identity",
+   "expected": "ambiguous",
+   "status": "ambiguous",
+   "statusMatches": true,
+   "sourcesMatch": null,
+   "usage": {
+    "inputTokens": 1147,
+    "outputTokens": 250,
+    "cacheReadTokens": 896
+   },
+   "reason": "One source describes a different business (Lunds Blommor) and the other is a generic directory page; neither confirms that Kastanj Florist exists at the supplied location.",
+   "rejected": []
+  }
+ ]
+}

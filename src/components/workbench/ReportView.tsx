@@ -8,6 +8,17 @@ export function ReportView({ report }: { report: ReportV2 }) {
     report.mode === "synthetic"
       ? { cited: report.evidence, other: [] }
       : splitEvidence(report);
+  const identity = report.identity;
+  const sourceLink = (id: string) => {
+    const e = report.evidence.find((x) => x.id === id);
+    return e?.url ? (
+      <a href={e.url} target="_blank" rel="noopener noreferrer">
+        {e.label}
+      </a>
+    ) : (
+      e?.label
+    );
+  };
   const source = (e: ReportV2["evidence"][number]) => (
     <article key={e.id}>
       <h3>
@@ -32,13 +43,35 @@ export function ReportView({ report }: { report: ReportV2 }) {
       <p className="eyebrow">01 / UNDERSTAND</p>
       <h2>{report.businessName}</h2>
       <p className="summary">{report.summary}</p>
-      {report.identityStatus === "ambiguous" && (
-        <p className="identity-notice" role="status">
-          <strong>Business not confirmed.</strong> Public sources didn’t clearly
-          match this name and location, so no services are suggested yet. Add
-          the business website or exact street address above and choose
-          Analyse business again.
+      {report.identityStatus === "confirmed" && identity?.candidates[0] && (
+        <p className="identity-match">
+          Matched “{identity.candidates[0].name.text}”
+          {identity.candidates[0].location &&
+            ` · “${identity.candidates[0].location.text}”`}{" "}
+          in {sourceLink(identity.candidates[0].name.sourceId)}
         </p>
+      )}
+      {report.identityStatus === "ambiguous" && (
+        <div className="identity-notice" role="status">
+          <p>
+            <strong>Business not confirmed.</strong>{" "}
+            {identity && identity.candidates.length > 1
+              ? "Several businesses match this name and location, so no services are suggested yet."
+              : "Public sources didn’t clearly match this name and location, so no services are suggested yet."}{" "}
+            Add the business website or exact street address above and choose
+            Analyse business again.
+          </p>
+          {identity && identity.candidates.length > 1 && (
+            <ul>
+              {identity.candidates.map((c) => (
+                <li key={c.name.sourceId}>
+                  “{c.name.text}”{c.location && ` · “${c.location.text}”`} in{" "}
+                  {sourceLink(c.name.sourceId)}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
       {report.mode === "live" && (
         <p className="freshness">

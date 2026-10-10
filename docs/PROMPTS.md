@@ -1,13 +1,8 @@
 # Prompt foundation
 
-Active families are `research-report-4` (`src/prompts/research-report/v4.ts`) and `service-selector-1` (`service-recommendation/v1.ts`). `active.ts` pins them. Versions 3 and 4 change only the identity rule:
+Active families are `research-report-5` (`src/prompts/research-report/v5.ts`) and `service-selector-1` (`service-recommendation/v1.ts`). `active.ts` pins them.
 
-- One excerpt matching the name with the supplied location, address or website confirms identity.
-- A conflicting or unverified listing becomes an uncertainty.
-- Same-name businesses in other locations are ignored as unrelated results.
-- Ambiguity is reserved for indistinguishable matches in the supplied location.
-
-`research-report-2` and `-3` are retained unchanged for replay and rollback.
+`research-report-5` returns identity as quoted candidates that `domain/identity.ts` verifies (`research-validation-5`). It replaces the word-matching identity gate and the v3/v4 wording adjustments. Thresholds are named in `identityThresholds`: name containment 0.8, location containment 0.8. They are measured with `scripts/eval-identity.ts --repeat 3`, not tuned per case. Earlier versions are retained for replay and rollback.
 
 Validation `research-validation-4` removes an individual unsupported finding or action and discloses the removal, instead of rejecting every supported statement. An unsupported summary still rejects the report. Failures record which check failed as a short code, never raw model text. Named sections reconstruct the exact previously shipped instruction text; extraction hash regressions verify that no policy text changed. Earlier research versions whose text was not retained are unavailable for replay.
 

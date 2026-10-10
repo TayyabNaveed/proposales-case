@@ -746,3 +746,17 @@ h1 {
   margin-top: 12px;
   color: var(--muted);
 }
+.identity-match {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 8px 0 16px;
+  overflow-wrap: anywhere;
+}
+.identity-notice p {
+  margin: 0;
+}
+.identity-notice ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  overflow-wrap: anywhere;
+}

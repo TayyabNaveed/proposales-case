@@ -98,7 +98,9 @@ export function recommendationIdentity(
     }),
   };
 }
-function compactInput(report: ReportV2, catalogue: CatalogueV2) {
+function compactInput(full: ReportV2, catalogue: CatalogueV2) {
+  // Identity evidence decides whether selection may run; it is not selector input.
+  const { identity: _identity, ...report } = full;
   if (
     JSON.stringify(report).length >
       activePrompts.selection.config.maxRecordCharacters ||

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { identityOutputSchema, decideIdentity } from "./identity.js";
 import { reportSchema, type ReportV2 } from "./reports.js";
 export function publicSourceUrl(value: string): string | null {
   try {
@@ -44,7 +45,7 @@ export type Evidence = ReportV2["evidence"][number];
 const text = z.string().min(1).max(600);
 export const researchOutputSchema = z
   .object({
-    identityStatus: z.enum(["confirmed", "ambiguous"]),
+    identity: identityOutputSchema,
     summary: text,
     findings: z
       .array(
@@ -73,55 +74,6 @@ export const researchOutputSchema = z
     uncertainties: z.array(text).max(12),
   })
   .strict();
-const normal = (s: string) =>
-  s
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/\p{M}/gu, "")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-// A detailed address must not make matching harder: any comma-separated part or
-// place word (4+ letters) of the supplied location counts beside the exact name.
-function locationTerms(location: string) {
-  const parts = location.split(",").map(normal).filter(Boolean);
-  const words = parts.flatMap((p) =>
-    p.split(" ").filter((w) => w.length >= 4 && !/\d/.test(w)),
-  );
-  return [...new Set([normal(location), ...parts, ...words])];
-}
-export function identitySupported(
-  input: Pick<ResearchInput, "businessName" | "location">,
-  evidence: Evidence[],
-) {
-  // Each name word may carry a possessive s ("Stadsmissionens Second Hand").
-  const name = new RegExp(
-      "(?:^| )" +
-        normal(input.businessName)
-          .split(" ")
-          .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "s?")
-          .join(" ") +
-        "(?= |$)",
-    ),
-    terms = locationTerms(input.location);
-  return evidence.some((e) =>
-    e.excerpt.split(/[.!?\n]/).some((sentence) => {
-      const s = normal(sentence),
-        match = name.exec(s),
-        n = match ? match.index : -1,
-        end = match ? n + match[0].length : 0;
-      // Exclude the name itself, so "Uppsala Bil" alone cannot match "Uppsala".
-      const around =
-        s.slice(Math.max(0, n - 200), Math.max(0, n)) +
-        " " +
-        s.slice(end, end + 200);
-      return (
-        n >= 0 &&
-        terms.some((t) => around.includes(t)) &&
-        !/\b(other|unrelated|different|not|rather)\b/.test(s)
-      );
-    }),
-  );
-}
 export function splitEvidence<E extends { id: string }>(report: {
   evidence: E[];
   findings: { evidenceIds: string[] }[];
@@ -178,19 +130,23 @@ export function buildLiveReport(
     out.findings.length -
     findings.length +
     out.actions.filter((a) => forbidden(a.text)).length;
-  const identityStatus =
-    out.identityStatus === "confirmed" && identitySupported(input, evidence)
-      ? "confirmed"
-      : "ambiguous";
-  const matched =
-    input.website && identityStatus === "confirmed"
-      ? evidence.filter(
-          (e) =>
-            e.url &&
-            identitySupported(input, [e]) &&
-            new URL(e.url).hostname === new URL(input.website!).hostname,
-        )
-      : [];
+  const { status: identityStatus, identity } = decideIdentity(
+    out.identity,
+    input,
+    evidence,
+  );
+  // The website is present only when the matched business has a source on the
+  // website the user supplied.
+  const siteHost = input.website
+    ? new URL(input.website).hostname.replace(/^www\./, "")
+    : null;
+  const matched = evidence.filter(
+    (e) =>
+      siteHost &&
+      e.url &&
+      identity.matchedSourceIds.includes(e.id) &&
+      new URL(e.url).hostname.replace(/^www\./, "") === siteHost,
+  );
   const unknown = () => ({ status: "unknown" as const, evidenceIds: [] });
   return reportSchema.parse({
     id,
@@ -199,6 +155,7 @@ export function buildLiveReport(
     businessName: input.businessName,
     summary: out.summary,
     identityStatus,
+    identity,
     goals: [],
     capabilities: {
       website: matched.length
@@ -219,7 +176,9 @@ export function buildLiveReport(
         : []),
       ...(identityStatus === "ambiguous"
         ? [
-            "Business identity is unconfirmed; confirm name, location and website before recommending services.",
+            identity.candidates.length > 1
+              ? "Several businesses match this name and location; confirm which one before recommending services."
+              : "No source clearly ties this business name to the location or website supplied; confirm them before recommending services.",
           ]
         : []),
       "Public search does not establish account ownership, advertising budget, analytics or Search Console status.",

@@ -165,3 +165,12 @@ Final HTTP integration passed (1/1): unauthorised/cross-origin writes rejected, 
 - One of Tayyab's live runs failed validation as a whole. Ruling (`research-validation-4`): drop an unsupported finding or action, disclose the removal and keep the rest. An unsupported summary still rejects. Failures record a safe check code (`check`). Cost: a report can have fewer findings than the model wrote, and the disclosure line shows that.
 - RED→GREEN: the claim tests now expect dropping; added tests for partial removal, the summary check code and the v4 prompt. 129/129 offline, typecheck/build, DB 9/9.
 - Real calls on saved sources (no DB writes): Ekeby Autoservice with its address confirmed, with the Apelgatan listing as an uncertainty. Handy Heroes AB ran four times: v4 confirmed every run; one run had 3 unsupported statements removed and would previously have failed. No Tavily calls.
+
+## 11 October 2026 — Evidence-based business identity
+
+- Root cause: identity was decided twice without shared evidence. The model gave a bare verdict, and a word-matching gate (`identitySupported`) could overrule it. The gate assumed one sentence, the whole typed location, the exact name and spaces between words. Wording fixes (v3, v4) and lexical tweaks treated symptoms.
+- Ruling: the model returns quoted candidates. Code verifies that the quotes exist and that they contain or resemble the typed name and location, using character bigrams and continuous normalised text, which work in any language. The typed location found in the name's own source anchors identity directly. Rejected candidates keep codes. The model's ambiguity stands unless every competitor is verifiably elsewhere. Cost: code cannot judge meaning (a nearby place referring to something else); the quotes are shown for human judgement.
+- Removed `identitySupported` and the possessive-s rule. Prompt `research-report-5`, schema `report-3`, validation `research-validation-5`. The selector input excludes identity, so selection is unchanged.
+- Evaluation set added before the change: 11 fictional cases plus 6 private real searches. Baseline 12/17; candidate 43/51 over 3 repetitions, with 28/28 matched-source checks. Remaining misses are documented in evals/REVIEW.md. RED→GREEN identity tests; 136/136 offline, typecheck/build, DB 9/9.
+- Found but not changed: the summary absence regex rejects disclaimers ("No website performance … data") and only understands English. It awaits Tayyab's decision because it is an existing safety check.
+- Not committed or pushed, per the change-approval rule.

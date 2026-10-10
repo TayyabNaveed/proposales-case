@@ -88,7 +88,17 @@ test("live report cache reuses sources and recommendations, and scoped/expired r
   let searchCalls = 0,
     reportCalls = 0;
   const output = {
-    identityStatus: "confirmed",
+    identity: {
+      status: "confirmed",
+      reason: "One listing names the studio in Stockholm.",
+      candidates: [
+        {
+          sourceIds: ["s1"],
+          name: { sourceId: "s1", text: "Juniper Ceramics" },
+          location: { sourceId: "s1", text: "Stockholm" },
+        },
+      ],
+    },
     summary: "A studio offers classes.",
     findings: [
       {
