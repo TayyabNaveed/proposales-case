@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { dailyLimit } from "./limits.js";
 import type pg from "pg";
 import { reports, type ReportV2 } from "../domain/reports.js";
 import { catalogueV2, type CatalogueV2 } from "../domain/catalogue.js";
@@ -49,6 +50,7 @@ const record = (
 export function createRecommendationStore(
   pool: pg.Pool,
   schema = "case_workflow",
+  limit: number | null = dailyLimit("recommendation"),
 ) {
   if (!/^(case_workflow|case_test_[a-f0-9]+)$/.test(schema))
     throw new Error("invalid_schema");
@@ -94,8 +96,8 @@ export function createRecommendationStore(
             );
         }
         const budget = await client.query(
-          `INSERT INTO ${budgets}(access_scope,day,admitted) VALUES($1,(now() AT TIME ZONE 'UTC')::date,1) ON CONFLICT(access_scope,day) DO UPDATE SET admitted=${budgets}.admitted+1 WHERE ${budgets}.admitted<20 RETURNING admitted`,
-          [input.accessScope],
+          `INSERT INTO ${budgets}(access_scope,day,admitted) VALUES($1,(now() AT TIME ZONE 'UTC')::date,1) ON CONFLICT(access_scope,day) DO UPDATE SET admitted=${budgets}.admitted+1 WHERE $2::int IS NULL OR ${budgets}.admitted<$2 RETURNING admitted`,
+          [input.accessScope, limit],
         );
         if (budget.rowCount !== 1)
           throw new Error("recommendation_budget_exceeded");

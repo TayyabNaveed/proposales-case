@@ -10,6 +10,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import type pg from "pg";
 import { snapshotHash } from "./canonical.js";
+import { dailyLimit } from "./limits.js";
 import {
   researchInputSchema,
   researchOutputSchema,
@@ -46,7 +47,11 @@ const record = (r: Record<string, unknown>, cacheHit = false): ResearchRecord =>
     expiresAt: r.expiresAt ? (r.expiresAt as Date).toISOString() : null,
     cacheHit,
   }) as ResearchRecord;
-export function createResearchStore(pool: pg.Pool, schema = "case_workflow") {
+export function createResearchStore(
+  pool: pg.Pool,
+  schema = "case_workflow",
+  limitFor: (stage: "search" | "report") => number | null = dailyLimit,
+) {
   if (!/^(case_workflow|case_test_[a-f0-9]+)$/.test(schema))
     throw new Error("invalid_schema");
   const runs = `"${schema}".research_runs`,
@@ -105,8 +110,8 @@ export function createResearchStore(pool: pg.Pool, schema = "case_workflow") {
             );
         }
         const budget = await c.query(
-          `INSERT INTO ${budgets}(access_scope,stage,day,admitted) VALUES($1,$2,(now() AT TIME ZONE 'UTC')::date,1) ON CONFLICT(access_scope,stage,day) DO UPDATE SET admitted=${budgets}.admitted+1 WHERE ${budgets}.admitted<10 RETURNING admitted`,
-          [a.scope, a.stage],
+          `INSERT INTO ${budgets}(access_scope,stage,day,admitted) VALUES($1,$2,(now() AT TIME ZONE 'UTC')::date,1) ON CONFLICT(access_scope,stage,day) DO UPDATE SET admitted=${budgets}.admitted+1 WHERE $3::int IS NULL OR ${budgets}.admitted<$3 RETURNING admitted`,
+          [a.scope, a.stage, limitFor(a.stage)],
         );
         if (budget.rowCount !== 1) throw new Error("research_budget_exceeded");
         const id = randomUUID(),

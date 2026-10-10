@@ -12,6 +12,7 @@ try {
     "004_provider_assets",
     "005_research",
     "006_app_role",
+    "008_configurable_limits",
   ]) {
     await pool.query(
       fs.readFileSync("db/migrations/" + migration + ".sql", "utf8"),

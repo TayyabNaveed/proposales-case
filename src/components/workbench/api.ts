@@ -7,7 +7,7 @@ export const explanations: Record<string, string> = {
   research_stale:
     "This research has expired. Analyse the business again for current information.",
   research_budget_exceeded:
-    "Today’s research limit has been reached. Try tomorrow or explore an example.",
+    "Today’s demo research limit has been reached. It resets at midnight UTC; saved analyses still open, and examples are always available.",
   research_report_failed:
     "The report could not be completed. Your sources are saved; try again.",
   research_search_partial:
@@ -21,9 +21,9 @@ export const explanations: Record<string, string> = {
   recommendation_invalid:
     "The suggestions could not be validated. The report is saved; try again.",
   recommendation_budget_exceeded:
-    "Today’s suggestion limit has been reached. Try tomorrow.",
+    "Today’s demo suggestion limit has been reached. It resets at midnight UTC.",
   draft_budget_exceeded:
-    "Today’s proposal limit has been reached. Try tomorrow.",
+    "Today’s demo proposal limit has been reached. It resets at midnight UTC.",
   too_many_attempts: "Please wait a minute before trying again.",
   asset_not_verified: "A selected service is not ready in Proposales.",
   unsupported_adjustment:

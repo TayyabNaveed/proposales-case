@@ -17,8 +17,8 @@ test("research stages deduplicate concurrent admissions, isolate cache scope, re
         .readFileSync("db/migrations/005_research.sql", "utf8")
         .replaceAll("case_workflow", schema),
     );
-    const x = createResearchStore(a, schema),
-      y = createResearchStore(b, schema);
+    const x = createResearchStore(a, schema, () => 10),
+      y = createResearchStore(b, schema, () => 10);
     const args = {
       stage: "search" as const,
       identity: { query: "Juniper Stockholm", version: 1 },
@@ -135,7 +135,7 @@ test("live report cache reuses sources and recommendations, and scoped/expired r
           .readFileSync("db/migrations/" + m + ".sql", "utf8")
           .replaceAll("case_workflow", schema),
       );
-    const service = createResearchService(createResearchStore(pool, schema), {
+    const service = createResearchService(createResearchStore(pool, schema, () => 10), {
       model: "deepseek-flash",
       apiKey: "synthetic",
       tavilyKey: "synthetic",

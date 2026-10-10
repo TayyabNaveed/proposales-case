@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { dailyLimit } from "./limits.js";
 import { compositionVersion } from "../domain/presentation.js";
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
@@ -65,7 +66,11 @@ const project = (row: any): StoredDraftSnapshot => ({
   ...row,
   createdAt: row.createdAt.toISOString(),
 });
-export function createDraftStore(pool: pg.Pool, schema = "case_workflow") {
+export function createDraftStore(
+  pool: pg.Pool,
+  schema = "case_workflow",
+  limit: number | null = dailyLimit("draft"),
+) {
   if (!/^(case_workflow|case_test_[a-f0-9]+)$/.test(schema))
     throw new Error("invalid_schema");
   const table = `"${schema}".draft_snapshots`,
@@ -113,8 +118,8 @@ export function createDraftStore(pool: pg.Pool, schema = "case_workflow") {
         );
         if (insert.rowCount === 1) {
           const b = await client.query(
-            `INSERT INTO ${budget}(access_scope,day,admitted) VALUES($1,(now() AT TIME ZONE 'UTC')::date,1) ON CONFLICT(access_scope,day) DO UPDATE SET admitted=${budget}.admitted+1 WHERE ${budget}.admitted<10 RETURNING admitted`,
-            [scope],
+            `INSERT INTO ${budget}(access_scope,day,admitted) VALUES($1,(now() AT TIME ZONE 'UTC')::date,1) ON CONFLICT(access_scope,day) DO UPDATE SET admitted=${budget}.admitted+1 WHERE $2::int IS NULL OR ${budget}.admitted<$2 RETURNING admitted`,
+            [scope, limit],
           );
           if (b.rowCount !== 1) throw new Error("draft_budget_exceeded");
           await client.query("COMMIT");

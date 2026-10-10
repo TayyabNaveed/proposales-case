@@ -41,8 +41,8 @@ test("snapshot admission and provider identity/link survive concurrency, conflic
     const run = recorded.recommendations[0] as any;
     await recs.finish(admitted.record.id, scope, { result: run });
     const snapshot = buildDraftSnapshot(report, run.selection, catalogueV2),
-      first = createDraftStore(a, schema),
-      second = createDraftStore(b, schema),
+      first = createDraftStore(a, schema, 10),
+      second = createDraftStore(b, schema, 10),
       requestId = randomUUID();
     const results = await Promise.all([
       first.save(requestId, admitted.record.id, scope, snapshot),
@@ -130,7 +130,7 @@ test("snapshot admission and provider identity/link survive concurrency, conflic
     c = createDatabase();
     const result = await createDraftFromSnapshot({
       ...options,
-      drafts: createDraftStore(c, schema),
+      drafts: createDraftStore(c, schema, 10),
       operations: createOperationStore(c, schema),
       mode: "status",
     });

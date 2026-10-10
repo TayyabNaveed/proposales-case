@@ -59,8 +59,8 @@ test("database admission deduplicates paid calls across clients, caches only suc
         )
         .replaceAll("case_workflow", schema),
     );
-    const store = createRecommendationStore(a, schema),
-      storeB = createRecommendationStore(b, schema);
+    const store = createRecommendationStore(a, schema, 20),
+      storeB = createRecommendationStore(b, schema, 20);
     let calls = 0,
       release!: () => void,
       entered!: () => void;
@@ -147,7 +147,7 @@ test("database admission deduplicates paid calls across clients, caches only suc
     assert.equal(calls, 3);
     await a.end();
     c = createDatabase();
-    const persisted = await createRecommendationStore(c, schema).get(
+    const persisted = await createRecommendationStore(c, schema, 20).get(
       fresh.id,
       "scope-a",
     );
@@ -212,7 +212,7 @@ test("stalled runs require explicit restart, and admission enforces a durable pe
         )
         .replaceAll("case_workflow", schema),
     );
-    const store = createRecommendationStore(pool, schema),
+    const store = createRecommendationStore(pool, schema, 20),
       identity = recommendationIdentity(
         reports[0],
         catalogueV2,

@@ -174,3 +174,10 @@ Final HTTP integration passed (1/1): unauthorised/cross-origin writes rejected, 
 - Evaluation set added before the change: 11 fictional cases plus 6 private real searches. Baseline 12/17; candidate 43/51 over 3 repetitions, with 28/28 matched-source checks. Remaining misses are documented in evals/REVIEW.md. RED→GREEN identity tests; 136/136 offline, typecheck/build, DB 9/9.
 - Found but not changed: the summary absence regex rejects disclaimers ("No website performance … data") and only understands English. It awaits Tayyab's decision because it is an existing safety check.
 - Not committed or pushed, per the change-approval rule.
+
+## 11 October 2026 — Configurable daily limits
+
+- Cause: the guided-flow testing hit `research_budget_exceeded`. The report stage had reached its hard-coded 10 per UTC day for the single shared demo scope. Tavily usage was 8 searches (24 credits) in total. The same cap applied to cheap model stages and to the credit-spending search, and the database range checks repeated the numbers.
+- Ruling: one module (`server/limits.ts`) owns the daily caps, configurable with `DAILY_LIMIT_*`. Defaults follow cost: search 20, identify 60, report 60, recommendation 20, draft 10. `DAILY_LIMITS=off` is for local development and is ignored when `VERCEL_ENV=production`. Invalid values fail closed. Migration 008 leaves the database checking only that counts are positive. Per-minute and login limits are unchanged.
+- Messages state that limits reset at midnight UTC. 142 offline tests and DB 9/9 pass (integration tests pin their own limits). Migration 008 awaits approval before it is applied to the shared database.
+- Revised after review with Tayyab: access is authenticated, so daily caps are opt-in (none by default). Bounds are rate limits, caching, the provider accounts' own limits, and visible usage. `DAILY_LIMITS=off` was removed as unnecessary.

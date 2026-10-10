@@ -30,6 +30,7 @@ Copy `.env.example` to `.env.local` **only if the local file does not already ex
 | `DEEPSEEK_MODEL` | Exact model selected after account/output compatibility checks |
 | `TAVILY_API_KEY` | Live research; not required for synthetic examples |
 | `DATABASE_URL` | Dedicated Supabase transaction-pooler Postgres URI with database password |
+| `DAILY_LIMIT_*` | Optional daily caps per stage; none by default (see `.env.example` and `src/server/limits.ts`). |
 
 The SQL connection does not use a Supabase publishable/anon API key. Browser database access is not planned. Use Node 24 (see `.nvmrc`). The connection requires the Supabase CA certificate through `DATABASE_CA_PATH` (local file, defaults to `prod-ca-2021.crt`) or `DATABASE_CA_PEM` (hosting environment). TLS verification stays enabled.
 
