@@ -51,7 +51,7 @@ For a dedicated case database, apply the additive migrations with `npm run db:mi
 
 `npm run probe -- draft` deliberately creates **one unsent, recipient-free, description-only discovery draft**. A durable operation key makes repeat runs reuse its result. `npm run probe -- verify-draft` only retrieves/verifies it. Private IDs are saved under ignored `private/`. The command does not create priced content or send email. Unknown/unfinished operation outcomes require reconciliation; do not delete operation rows to force another attempt.
 
-The CLI is an operator tool. The UI uses signed demo sessions and exact-origin checks for AI calls and real account-backed unsent draft creation. Migrations and operator scripts use the project role. The hosted app connects as `case_app`, which can only read, insert and update `case_workflow` rows (see `db/migrations/006_app_role.sql`). In the Vercel `DATABASE_URL`, use the pooler user `case_app.<project-ref>`.
+The CLI is an operator tool. The UI uses signed demo sessions and exact-origin checks for AI calls and real account-backed unsent draft creation. **Known limitation:** the hosted app connects with the Supabase project role, like migrations and operator scripts. For a case project that was a deliberate choice. A production setup would give the app its own narrower role. `db/migrations/006_app_role.sql` prepares that role, `case_app`, limited to reading, inserting and updating `case_workflow` rows. It has no effect unless the role is created.
 
 ## Current evidence and limits
 
