@@ -11,11 +11,12 @@ test("atomic admission survives two pools, reconnect and contradictory outcomes"
   const b = createDatabase();
   let c: ReturnType<typeof createDatabase> | undefined;
   try {
-    await a.query(
-      fs
-        .readFileSync("db/migrations/001_operations.sql", "utf8")
-        .replaceAll("case_workflow", schema),
-    );
+    for (const m of ["001_operations", "010_operation_errors"])
+      await a.query(
+        fs
+          .readFileSync(`db/migrations/${m}.sql`, "utf8")
+          .replaceAll("case_workflow", schema),
+      );
     const first = createOperationStore(a, schema);
     const second = createOperationStore(b, schema);
     const claims = await Promise.all([

@@ -54,7 +54,7 @@ export function createOperationStore(
     },
     async get(key) {
       const r = await pool.query(
-        `SELECT state,provider_id AS "providerId",editor_url AS "editorUrl" FROM ${table} WHERE operation_key=$1`,
+        `SELECT state,provider_id AS "providerId",editor_url AS "editorUrl",error_code AS "errorCode" FROM ${table} WHERE operation_key=$1`,
         [key],
       );
       if (r.rows.length !== 1) throw new Error("operation_missing");
@@ -66,9 +66,12 @@ export function createOperationStore(
         outcome.state === "confirmed"
           ? trustedEditorUrl(outcome.editorUrl)
           : undefined;
+      const code = outcome.state === "confirmed" ? null : (outcome.errorCode ?? null);
+      // A rejection is final; an unknown outcome may still be reconciled to
+      // confirmed (or found to be rejected) later.
       const r = await pool.query(
-        `UPDATE ${table} SET state=$2, provider_id=$3, editor_url=COALESCE($4,editor_url), updated_at=now() WHERE operation_key=$1 AND (state IN ('claimed','unknown') OR (state=$2 AND provider_id IS NOT DISTINCT FROM $3))`,
-        [key, outcome.state, id, url ?? null],
+        `UPDATE ${table} SET state=$2, provider_id=$3, editor_url=COALESCE($4,editor_url), error_code=$5, updated_at=now() WHERE operation_key=$1 AND (state IN ('claimed','unknown') OR (state=$2 AND provider_id IS NOT DISTINCT FROM $3))`,
+        [key, outcome.state, id, url ?? null, code],
       );
       if (r.rowCount !== 1) throw new Error("operation_transition_conflict");
     },

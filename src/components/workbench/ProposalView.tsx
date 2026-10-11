@@ -106,6 +106,12 @@ export function ProposalView({
                   : "Inspect existing proposal"}
               </a>
             )}
+            {flow.outcome?.state === "rejected" && (
+              <p role="alert">
+                Proposales rejected this proposal, so nothing was created.
+                Adjust the scope if needed and create it again.
+              </p>
+            )}
             {flow.outcome?.state === "verification_failed" && (
               <p role="alert">
                 A proposal exists, but we couldn’t confirm all its details.

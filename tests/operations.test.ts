@@ -178,3 +178,37 @@ test("unsafe provider URL is discarded while the successful UUID remains durable
   assert.equal(result.providerId, uuid);
   assert.ok(!result.editorUrl);
 });
+test("a definite provider rejection is recorded as rejected with its code and never redispatched", async () => {
+  const providerError = (code: string, outcomeUnknown: boolean) =>
+    Object.assign(new Error("proposales: " + code), { code, outcomeUnknown });
+  for (const [code, state] of [
+    ["http_422", "rejected"],
+    ["http_400", "rejected"],
+    ["http_429", "unknown"],
+    ["http_408", "unknown"],
+    ["outcome_unknown", "unknown"],
+  ] as const) {
+    const store = memory();
+    let writes = 0;
+    const run = () =>
+      executeDraft({
+        key: "k",
+        hash: "h",
+        store,
+        create: async () => {
+          writes++;
+          throw providerError(code, code === "outcome_unknown");
+        },
+      });
+    const first = await run();
+    assert.equal(first.state, state, code);
+    assert.equal(first.errorCode, code);
+    await run();
+    assert.equal(writes, 1, code);
+  }
+  // A failure without a provider code, such as a dropped connection, stays unknown.
+  const store = memory();
+  const r = await executeDraft({ key: "k", hash: "h", store, create: async () => { throw new TypeError("fetch failed"); } });
+  assert.equal(r.state, "unknown");
+  assert.equal(r.errorCode, "network");
+});

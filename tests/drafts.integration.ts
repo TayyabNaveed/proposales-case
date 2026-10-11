@@ -19,7 +19,7 @@ test("snapshot admission and provider identity/link survive concurrency, conflic
     b = createDatabase();
   let c: ReturnType<typeof createDatabase> | undefined;
   try {
-    for (const name of ["001_operations", "003_recommendations_and_drafts"])
+    for (const name of ["001_operations", "010_operation_errors", "003_recommendations_and_drafts"])
       await a.query(
         fs
           .readFileSync("db/migrations/" + name + ".sql", "utf8")
@@ -162,7 +162,7 @@ test("category assets are pinned before save; restored requests do not read muta
   const schema = "case_test_" + randomBytes(8).toString("hex");
   const db = createDatabase();
   try {
-    for (const name of ["001_operations", "003_recommendations_and_drafts"])
+    for (const name of ["001_operations", "010_operation_errors", "003_recommendations_and_drafts"])
       await db.query(
         fs
           .readFileSync("db/migrations/" + name + ".sql", "utf8")

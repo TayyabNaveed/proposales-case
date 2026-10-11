@@ -5,7 +5,10 @@ import type { ApprovedOffer } from "./offers.js";
 import { executeDraft, type OperationStore } from "./operations.js";
 export type DraftOutcome =
   | { state: "confirmed"; providerId: string; editorUrl: string }
-  | { state: "claimed" | "unknown" | "verification_failed"; message: string };
+  | {
+      state: "claimed" | "unknown" | "rejected" | "verification_failed";
+      message: string;
+    };
 export async function createReviewedDraft(options: {
   approvalId: string;
   expectedHash: string;
@@ -45,9 +48,11 @@ export async function createReviewedDraft(options: {
     return {
       state: operation.state,
       message:
-        operation.state === "unknown"
-          ? "The provider outcome is unknown. Reconcile the existing operation before any new creation."
-          : "Creation is in progress. No second request will be dispatched.",
+        operation.state === "rejected"
+          ? "Proposales rejected this request, so nothing was created."
+          : operation.state === "unknown"
+            ? "The provider outcome is unknown. Reconcile the existing operation before any new creation."
+            : "Creation is in progress. No second request will be dispatched.",
     };
   const uuid = operation.providerId;
   if (!uuid || !/^[a-f0-9-]{36}$/i.test(uuid))
@@ -81,7 +86,14 @@ export async function createReviewedDraft(options: {
 
 export type SnapshotDraftOutcome = {
   state:
-    "confirmed" | "claimed" | "unknown" | "verification_failed" | "not_started";
+    | "confirmed"
+    | "claimed"
+    | "unknown"
+    | "rejected"
+    | "verification_failed"
+    | "not_started";
+  // Safe error category for rejected or unknown creations, e.g. http_422.
+  errorCode?: string;
   snapshotId: string;
   message: string;
   providerId?: string;
@@ -142,7 +154,7 @@ export async function createDraftFromSnapshot(options: {
         };
       throw e;
     }
-    if (operation.state !== "confirmed") {
+    if (operation.state === "unknown" || operation.state === "claimed") {
       try {
         const matches = (await options.provider.find(key)).filter(
           (p) => p.snapshotHash === stored.snapshotHash,
@@ -176,10 +188,13 @@ export async function createDraftFromSnapshot(options: {
     return {
       state: operation.state,
       snapshotId: stored.id,
+      ...(operation.errorCode ? { errorCode: operation.errorCode } : {}),
       message:
-        operation.state === "unknown"
-          ? "The creation outcome is unknown. Check this operation; do not generate another version to retry."
-          : "Creation is in progress. Check status; no second creation is dispatched.",
+        operation.state === "rejected"
+          ? `Proposales rejected this proposal (${operation.errorCode}), so nothing was created. You can adjust the scope and create it again.`
+          : operation.state === "unknown"
+            ? "The creation outcome is unknown. Check this operation; do not generate another version to retry."
+            : "Creation is in progress. Check status; no second creation is dispatched.",
     };
   const uuid = operation.providerId;
   if (!uuid || !/^[a-f0-9-]{36}$/i.test(uuid))

@@ -194,13 +194,16 @@ export function serviceAvailability(
   return { available: true };
 }
 // The browser keeps a proposal request only to recover a lost response. Once the
-// server reports the proposal's Proposales ID (stored durably server-side), the
-// request has served its purpose and is released. Uncertain outcomes keep it.
+// server reports the proposal's Proposales ID (stored durably server-side), or a
+// definite rejection, the request has served its purpose and is released.
+// Uncertain outcomes keep it.
 export function isSettledOutcome(
   o: { state: string; providerId?: string } | null | undefined,
 ) {
+  // A rejection is also settled: nothing was created, so a new request is safe.
   return (
-    !!o?.providerId &&
-    (o.state === "confirmed" || o.state === "verification_failed")
+    o?.state === "rejected" ||
+    (!!o?.providerId &&
+      (o.state === "confirmed" || o.state === "verification_failed"))
   );
 }

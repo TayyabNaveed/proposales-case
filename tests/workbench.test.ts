@@ -199,6 +199,8 @@ test("a saved proposal request is released once the server knows the proposal ex
   assert.equal(isSettledOutcome({ state: "confirmed", providerId: id }), true);
   // A draft exists but its read-back failed: identity is still durably known.
   assert.equal(isSettledOutcome({ state: "verification_failed", providerId: id }), true);
+  // Proposales refused it: nothing exists, so creating again is safe.
+  assert.equal(isSettledOutcome({ state: "rejected" }), true);
   for (const state of ["unknown", "claimed", "not_started"])
     assert.equal(isSettledOutcome({ state }), false);
   assert.equal(isSettledOutcome({ state: "confirmed" }), false);

@@ -18,7 +18,7 @@ test("the proposals list joins drafts to their Proposales proposal, live status 
   const schema = "case_test_" + randomBytes(8).toString("hex"),
     pool = createDatabase();
   try {
-    for (const m of ["001_operations", "003_recommendations_and_drafts"])
+    for (const m of ["001_operations", "010_operation_errors", "003_recommendations_and_drafts"])
       await pool.query(fs.readFileSync(`db/migrations/${m}.sql`, "utf8").replaceAll("case_workflow", schema));
     const report = reports[0],
       scope = "reviewer",
