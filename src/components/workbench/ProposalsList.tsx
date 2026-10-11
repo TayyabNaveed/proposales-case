@@ -1,6 +1,7 @@
 "use client";
 import { catalogueV2, money } from "../../domain/catalogue";
 import { friendlyDate } from "./api";
+import { Spinner } from "./Spinner";
 import type { ProposalStatus } from "../../server/proposals";
 import { statusLabel, statusOrder, type Proposals } from "./useProposals";
 
@@ -34,6 +35,7 @@ export function ProposalsList({
           Status is read live from Proposales. Review, send and track acceptance there.
         </p>
         <button disabled={loading} onClick={() => void load()}>
+          {loading && <Spinner />}
           {loading ? "Checking status…" : "Refresh status"}
         </button>
       </div>
@@ -46,6 +48,12 @@ export function ProposalsList({
         </p>
       )}
       {error && <p role="alert">{error}</p>}
+      {loading && !rows && (
+        <p className="loading-note" role="status">
+          <Spinner />
+          Reading proposals and their status from Proposales.
+        </p>
+      )}
       {rows && !rows.length && (
         <div className="empty">
           No proposals yet. Create one from a researched business or an example.

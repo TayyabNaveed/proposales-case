@@ -16,6 +16,8 @@ import {
   isSettledOutcome,
   isProposalStorageKey,
   UnreadableGeneration,
+  createNotice,
+  type CreateNotice,
 } from "../../domain/workbench";
 import { apiRequest, readSaved, explanations } from "./api";
 import type { DemoSession } from "./useDemoSession";
@@ -71,7 +73,12 @@ export function useProposalWorkflow(
     [busy, setBusy] = useState(""),
     [message, setMessage] = useState(""),
     [restoring, setRestoring] = useState(!!firstReport),
-    [storageIssue, setStorageIssue] = useState(false);
+    [storageIssue, setStorageIssue] = useState(false),
+    // Set only by the operator's own create or progress check, never by restore.
+    [notice, setNotice] = useState<(CreateNotice & { id: number }) | null>(
+      null,
+    );
+  const notify = (n: CreateNotice) => setNotice({ ...n, id: Date.now() });
   const [storageRevision, setStorageRevision] = useState(0);
   const storageRefreshQueued = useRef(false);
   // Whether `selected` holds the operator's choices rather than a suggestion's.
@@ -304,6 +311,7 @@ export function useProposalWorkflow(
       const v = await request<{ outcome: Outcome }>("/api/drafts", p);
       if (rev !== revision.current) return;
       settle(v.outcome);
+      notify(createNotice(v.outcome));
     } catch (e) {
       if (rev === revision.current) {
         if (
@@ -317,17 +325,20 @@ export function useProposalWorkflow(
           window.dispatchEvent(new Event("case-generation-changed"));
           setOutcome(null);
           setMessage((e as Error).message);
+          notify({ tone: "error", text: (e as Error).message });
         } else if (
           wasPending &&
           (e as { code?: string }).code === "stale_recommendation"
         ) {
           // Only the server can tell whether another tab saved it meanwhile.
           try {
-            settle(
-              (await request<{ outcome: Outcome }>(statusPath(p))).outcome,
-            );
+            const o = (await request<{ outcome: Outcome }>(statusPath(p)))
+              .outcome;
+            settle(o);
+            notify(createNotice(o));
           } catch (statusError) {
             setMessage((statusError as Error).message);
+            notify({ tone: "error", text: (statusError as Error).message });
           }
         } else {
           setOutcome({
@@ -338,6 +349,7 @@ export function useProposalWorkflow(
           setMessage(
             "We could not confirm whether the proposal was created. Check its progress; the same request is saved.",
           );
+          notify(createNotice({ state: "unknown" }));
         }
       }
     } finally {
@@ -365,8 +377,10 @@ export function useProposalWorkflow(
     try {
       const v = await request<{ outcome: Outcome }>(statusPath(pending));
       settle(v.outcome);
+      notify(createNotice(v.outcome));
     } catch (e) {
       setMessage((e as Error).message);
+      notify({ tone: "error", text: (e as Error).message });
     } finally {
       finishAction();
       setBusy("");
@@ -474,6 +488,8 @@ export function useProposalWorkflow(
     checkDraft,
     newVersion,
     edit,
+    notice,
+    dismissNotice: () => setNotice(null),
     expire: session.expire,
   };
 }

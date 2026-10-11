@@ -11,6 +11,7 @@ import {
 } from "../domain/workbench";
 import { apiRequest } from "./workbench/api";
 import { ResearchPanel } from "./ResearchPanel";
+import { Spinner } from "./workbench/Spinner";
 import { UsageLine } from "./workbench/UsageLine";
 import { ProposalsList } from "./workbench/ProposalsList";
 import { useProposals, statusOrder } from "./workbench/useProposals";
@@ -251,6 +252,7 @@ export function ExampleWorkbench({
                   onChange={(e) => setCode(e.target.value)}
                 />
                 <button className="primary" disabled={session.busy}>
+                  {session.busy && <Spinner />}
                   {session.busy ? "Opening access…" : "Unlock access"}
                 </button>
               </form>

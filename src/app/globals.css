@@ -977,6 +977,95 @@ blockquote {
 [role="alert"] {
   color: var(--error);
 }
+/* Activity: a small ring beside text that says what is happening. */
+.spinner {
+  display: inline-block;
+  flex: none;
+  width: 0.9em;
+  height: 0.9em;
+  margin-right: 0.5em;
+  vertical-align: -0.12em;
+  border: 2px solid var(--line-strong);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+button .spinner,
+.primary .spinner {
+  border-color: currentColor;
+  border-top-color: transparent;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes breathe {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: breathe 2s ease-in-out infinite;
+  }
+}
+.loading-note {
+  display: flex;
+  align-items: center;
+  margin: 18px 0;
+  padding: 14px 18px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.wait-hint {
+  color: var(--muted);
+}
+/* Toast: the result of creating a proposal, top right, above the docked bar. */
+.toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 12px 44px 12px 16px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-left: 4px solid var(--st-accepted);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgb(24 61 54 / 0.18);
+  font-size: 14px;
+}
+.toast-warning {
+  border-left-color: var(--st-warning);
+}
+.toast-error {
+  border-left-color: var(--error);
+}
+.toast p {
+  margin: 0;
+  color: inherit;
+  max-width: none;
+}
+.toast a {
+  font-weight: 600;
+}
+.toast button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 2px 9px;
+  border: 0;
+  font-size: 18px;
+  line-height: 1.4;
+}
 
 /* Proposals list. */
 .proposal-row {

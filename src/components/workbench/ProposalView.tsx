@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { money } from "../../domain/catalogue";
 import type { ProposalWorkflow } from "./useProposalWorkflow";
 import { CreateProposalDialog } from "./CreateProposalDialog";
+import { Toast } from "./Toast";
+import { Spinner } from "./Spinner";
 export function ProposalView({
   flow,
   authenticated,
@@ -37,6 +39,13 @@ export function ProposalView({
           }}
         />
       )}
+      <Toast
+        notice={flow.notice}
+        link={
+          flow.notice?.tone !== "error" ? flow.outcome?.editorUrl : undefined
+        }
+        onDismiss={flow.dismissNotice}
+      />
       <div className="review-summary">
         <p className="eyebrow">03 / CREATE & REVIEW</p>
         <h2>Proposal for {flow.report?.businessName ?? "this business"}</h2>
@@ -158,6 +167,7 @@ export function ProposalView({
             : "Creates an unsent draft. You review and send it in Proposales."}
         </small>
         <p role="status" aria-live="polite" className="action-status">
+          {flow.busy && <Spinner />}
           {flow.busy ||
             // The alert above already explains this outcome; say it once.
             (outcomeAlert && flow.message === flow.outcome?.message

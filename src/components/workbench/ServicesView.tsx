@@ -8,6 +8,7 @@ import { presentServices } from "../../domain/presentation";
 import { proposalCategories } from "../../domain/proposal-groups";
 import type { ProposalWorkflow } from "./useProposalWorkflow";
 import { friendlyDate } from "./api";
+import { Spinner } from "./Spinner";
 type Service = (typeof catalogueV2.services)[number];
 // Quantity (within catalogue bounds) and core/optional, for any chosen service.
 function ServiceControls({
@@ -100,6 +101,15 @@ export function ServicesView({
               : "Suggestions need another check."}{" "}
         Sample prices exclude tax.
       </p>
+      {(flow.busy === "Suggesting services" ||
+        flow.busy === "Checking saved suggestions") && (
+        <p className="loading-note" role="status">
+          <Spinner />
+          {flow.busy === "Suggesting services"
+            ? "Choosing services that fit this business. This usually takes 5–30 seconds."
+            : "Checking saved suggestions."}
+        </p>
+      )}
       {items.length > 0 && (
         <h3 className="block-title">Suggested for this business</h3>
       )}

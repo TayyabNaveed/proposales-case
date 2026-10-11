@@ -257,3 +257,48 @@ export function isProposalStorageKey(key: string | null, reportId?: string) {
     reportId ? key === prefix + reportId : key.startsWith(prefix),
   );
 }
+
+// What a finished create (or progress check) tells the operator, as a toast.
+export type CreateNotice = {
+  tone: "success" | "warning" | "error";
+  text: string;
+};
+export function createNotice(o: {
+  state: string;
+  issues?: string[];
+}): CreateNotice {
+  switch (o.state) {
+    case "confirmed":
+      return {
+        tone: "success",
+        text: "Proposal created in Proposales as an unsent draft.",
+      };
+    case "verification_failed":
+      return {
+        tone: "warning",
+        text: o.issues?.includes("recipient")
+          ? "Proposal created, but Proposales shows a different recipient. Check it in Proposales."
+          : "Proposal created, but some details differ from what you approved. Check it in Proposales.",
+      };
+    case "rejected":
+      return {
+        tone: "error",
+        text: "Proposales rejected the proposal, so nothing was created.",
+      };
+    case "expired":
+      return {
+        tone: "error",
+        text: "These suggestions expired, so nothing was created. Request fresh suggestions.",
+      };
+    case "not_started":
+      return {
+        tone: "warning",
+        text: "The request hasn’t reached the server yet. Retry the saved request.",
+      };
+    default:
+      return {
+        tone: "warning",
+        text: "We couldn’t confirm the result yet. Check its progress before creating again.",
+      };
+  }
+}

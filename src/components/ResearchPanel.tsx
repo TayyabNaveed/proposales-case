@@ -12,6 +12,7 @@ import { identifyStep, continueWithChoice } from "../domain/analysis-flow";
 import type { ReportV2 } from "../domain/reports";
 import { apiRequest, friendlyDate, explanations } from "./workbench/api";
 import { BusinessChoice } from "./workbench/BusinessChoice";
+import { Spinner } from "./workbench/Spinner";
 export function ResearchPanel({
   authenticated,
   blocked,
@@ -361,7 +362,14 @@ export function ResearchPanel({
         )}
       </form>
       <p role="status" aria-live="polite" className="analysis-progress">
+        {(restoring || busy) && <Spinner />}
         {restoring ? "Loading saved analysis" : busy || message}
+        {busy && !restoring && (
+          <small className="wait-hint">
+            {" "}
+            Each step usually takes 5–30 seconds.
+          </small>
+        )}
       </p>
       {!authenticated && (
         <p className="caption">

@@ -4,6 +4,7 @@ import type { ProposalPresentation } from "../../domain/offers";
 import { contactSuggestions } from "../../domain/contacts";
 import type { ProposalWorkflow } from "./useProposalWorkflow";
 import { apiRequest } from "./api";
+import { Spinner } from "./Spinner";
 
 type Intro = { state: string; text: string; dropped: number; errorCode: string | null };
 
@@ -105,7 +106,10 @@ export function CreateProposalDialog({
               onChange={(e) => setIntro(e.target.value)}
             />
           </label>
-          <small aria-live="polite">{drafting ? "Drafting a tailored introduction…" : note}</small>
+          <small aria-live="polite">
+            {drafting && <Spinner />}
+            {drafting ? "Drafting a tailored introduction…" : note}
+          </small>
         </fieldset>
         <fieldset>
           <legend>

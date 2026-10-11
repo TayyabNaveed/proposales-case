@@ -302,3 +302,20 @@ test("when the AI suggests nothing, services the operator picks still make a pro
   );
   assert.equal(snapshot.coreOneTimeMinor, 30000);
 });
+
+test("each create outcome gives the operator one clear notice", async () => {
+  const { createNotice } = await import("../src/domain/workbench.js");
+  assert.equal(createNotice({ state: "confirmed" }).tone, "success");
+  assert.match(
+    createNotice({ state: "verification_failed", issues: ["recipient"] }).text,
+    /different recipient/,
+  );
+  assert.equal(
+    createNotice({ state: "verification_failed", issues: ["blocks"] }).tone,
+    "warning",
+  );
+  assert.match(createNotice({ state: "rejected" }).text, /nothing was created/);
+  assert.equal(createNotice({ state: "expired" }).tone, "error");
+  for (const state of ["unknown", "claimed", "not_started"])
+    assert.equal(createNotice({ state }).tone, "warning");
+});
