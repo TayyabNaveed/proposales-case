@@ -251,3 +251,36 @@ test("proposal-5 investment line covers one-time only, monthly only and optional
     "Optional extras are listed separately and not included.",
   );
 });
+test("proposal-5 verification checks category rows like proposal-4", () => {
+  const s = clientSnapshot();
+  const actual5 = () => ({
+    ...buildPricedPayload(s, [], "1", "test"),
+    uuid: "00000000-0000-4000-8000-000000000099",
+    status: "draft",
+    recipient_is_set: false,
+    currency: "EUR",
+  });
+  assert.equal(
+    verifyPricedProposal(actual5(), s, [], "1", "test").verified,
+    true,
+  );
+  const mutations = [
+    (p: any) => p.blocks[1].multi_product_data.reverse(),
+    (p: any) => p.blocks[1].multi_product_data.pop(),
+    (p: any) => (p.blocks[0].multi_product_data[0].quantity = 4),
+    (p: any) =>
+      (p.blocks[0].multi_product_data[0].unitValueWithoutDiscountWithoutTax = 1),
+    (p: any) => (p.blocks[0].multi_product_data[0].notes = "Edited scope"),
+    (p: any) => (p.blocks[1].multi_product_data[0].unit = "unit"),
+    (p: any) => p.blocks.reverse(),
+  ];
+  for (const mutate of mutations) {
+    const p = actual5();
+    mutate(p);
+    assert.equal(
+      verifyPricedProposal(p, s, [], "1", "test").verified,
+      false,
+      mutate.toString(),
+    );
+  }
+});

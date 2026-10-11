@@ -274,3 +274,8 @@ Final HTTP integration passed (1/1): unauthorised/cross-origin writes rejected, 
 - Evidence: 174 offline tests (new: proposal-5 layout, investment line, filler absent, proposal-4 unchanged), DB 12/12 (default and opt-out pinning).
 - Live check (approved): one synthetic proposal-5 draft (Northstar, monthly services from three categories, one optional extra) created through the durable probe path; read-back verified exactly, 3 blocks, no recipient. Evidence in ignored `private/proposal5-smoke.json`.
 - Tayyab's review: the intro showed `**Investment:**` literally (Proposales does not render the description's Markdown) and disliked the "Excludes" line on every row. Ruling: plain "Investment: …"; client rows carry the scope only, exclusions stay in the app. Tests assert neither `**` nor "Excludes" reaches the client.
+
+## 11 October 2026 — proposal-5 read-back checks section rows
+
+- Found while wiring the template cover: proposal-5 read-back used the generic per-block check, not the category check, so row order, quantities, prices, notes and units inside sections were not verified (and the optional-defaults patch, unused by the app, did not refuse proposal-5). Cause: both tested `=== "proposal-4"`. Fixed for both versions; a test reorders, edits and removes rows and fails before the fix. No app proposal used proposal-5 before the fix (snapshots by version: none). Re-reading the probe drafts with the full check: the first fails on notes and descriptions, as it predates the final copy; the cover draft passes.
+- Evidence: 175 offline tests (new: proposal-5 rows reordered, removed or edited fail verification), typecheck.

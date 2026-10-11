@@ -264,10 +264,14 @@ export function verifyPricedProposal(
     issues.push("metadata");
   if (p.tax_options.mode !== "simplified" || p.tax_options.tax_included)
     issues.push("tax_display");
-  if (snapshot.compositionVersion === "proposal-4") {
-    if (p.data.case_composition !== "proposal-4") issues.push("composition");
+  const version = snapshot.compositionVersion;
+  if (version === "proposal-4" || version === "proposal-5") {
+    if (p.data.case_composition !== version) issues.push("composition");
     issues.push(
-      ...verifyCategoryBlocks(p.blocks, categoryBlocks(snapshot, companyId)),
+      ...verifyCategoryBlocks(
+        p.blocks,
+        categoryBlocks(snapshot, companyId, version),
+      ),
     );
     return { verified: issues.length === 0, issues: [...new Set(issues)] };
   }
@@ -318,7 +322,10 @@ export function buildOptionalDefaultsPatch(
   companyId: string,
   key: string,
 ) {
-  if (snapshot.compositionVersion === "proposal-4")
+  if (
+    snapshot.compositionVersion === "proposal-4" ||
+    snapshot.compositionVersion === "proposal-5"
+  )
     throw new Error("category_patch_not_supported");
   const fidelity = verifyPricedProposal(
     raw,
