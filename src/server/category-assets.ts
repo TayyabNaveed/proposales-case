@@ -26,9 +26,11 @@ const hashes: Record<CategoryId, string> = {
   "ongoing-care":
     "d6a6278c09fe21693b9fa7a5a53cfd61dd8173c617b824295da3d70957caf5d6",
 };
+// Category proposals are the default; PROPOSAL_COMPOSITION=proposal-3 opts out
+// for new proposals. Existing proposals always keep their own composition.
 export function proposalComposition(value: string | undefined) {
-  if (value === undefined || value === "proposal-3") return "proposal-3";
-  if (value === "proposal-4") return "proposal-4";
+  if (value === undefined || value === "" || value === "proposal-4") return "proposal-4";
+  if (value === "proposal-3") return "proposal-3";
   throw new Error("invalid_proposal_composition");
 }
 export function categoryManifest(origin: string) {

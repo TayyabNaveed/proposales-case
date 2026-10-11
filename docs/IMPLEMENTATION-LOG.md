@@ -218,3 +218,9 @@ Final HTTP integration passed (1/1): unauthorised/cross-origin writes rejected, 
 - Built in a separate worktree branch (`claude/proposals-page`) while another agent worked on category artwork in the main folder, so neither overwrote the other's uncommitted changes.
 - `server/proposals.ts` joins drafts, provider operations (deterministic key) and recommendations. Live status is read via the existing scoped `getDraft`, which now also keeps `status_changed_at`. A failed read becomes "unavailable" and keeps the row. Scope changes are recorded neutrally (kept, removed, added). Review questions are shown here, not in the proposal.
 - New "Proposals" tab (arrow keys, Home and End across three tabs). Integration test covers the join, status mapping, failure, scope isolation and changes. Real read-only check: 4 proposals with live status in 757 ms. 152 offline tests, DB 11/11, build.
+
+## 11 October 2026 — Category composition merged; default switched
+
+- The category composition (proposal-4) was implemented by a separate agent session, then reviewed, typing-fixed and merged. The test typing error would have failed the production build, which type-checks the tests.
+- Decision (Tayyab): new proposals use the category layout by default; `PROPOSAL_COMPOSITION=proposal-3` opts out. Existing proposals keep their own composition. Creation needs the category entries imported, so the deploy is followed immediately by the hosted-image check and import.
+- Follow-up (Tayyab): rename the variable to `STABLE_PROPOSAL_COMPOSITION`. When set, it pins that composition; otherwise the latest is used. Behaviour unchanged; name only.

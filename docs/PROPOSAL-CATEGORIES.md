@@ -1,6 +1,6 @@
 # Category proposal composition
 
-The category composition is implemented behind `PROPOSAL_COMPOSITION=proposal-4`. The default remains `proposal-3`. Local tests verify the contract; rollout still requires hosted images, imported category mappings and a live read-back/visual check. Background images and video are deferred.
+New proposals use the category composition (`proposal-4`) by default; `PROPOSAL_COMPOSITION=proposal-3` opts out (decision, 11 October). Category entries must be imported before proposals can be created with it. Local tests verify the contract; rollout still requires hosted images, imported category mappings and a live read-back/visual check. Background images and video are deferred.
 
 ## Service definitions and presentation containers
 
@@ -59,7 +59,7 @@ Run with Node 24 or newer. The following commands have distinct effects; review 
 
 5. Verify the native proposal preview, including row descriptions, optional image override and monthly display. These details were not established by the earlier two-row feasibility probe. Only then set `PROPOSAL_COMPOSITION=proposal-4` in the intended environment and perform the normal protected app workflow check.
 
-If activation causes problems, unset `PROPOSAL_COMPOSITION` for new requests. Existing proposal-4 snapshots retain their pins and recovery behavior. Do not delete provider entries, discard pending identities or rewrite existing drafts.
+If the category layout causes problems, set `PROPOSAL_COMPOSITION=proposal-3` for new requests. Existing proposal-4 snapshots retain their pins and recovery behavior. Do not delete provider entries, discard pending identities or rewrite existing drafts.
 
 ## Code map
 
