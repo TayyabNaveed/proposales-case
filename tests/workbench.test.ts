@@ -192,3 +192,15 @@ test("other services explain why they cannot be added yet, from the same rules t
   assert.equal(serviceAvailability(svc("ads-management"), withSite, ["ads-setup"]).available, true);
   assert.match(serviceAvailability(svc("ai-visibility"), noSite, []).reason!, /website/i);
 });
+
+test("a saved proposal request is released once the server knows the proposal exists, never while uncertain", async () => {
+  const { isSettledOutcome } = await import("../src/domain/workbench.js");
+  const id = "00000000-0000-4000-8000-000000000009";
+  assert.equal(isSettledOutcome({ state: "confirmed", providerId: id }), true);
+  // A draft exists but its read-back failed: identity is still durably known.
+  assert.equal(isSettledOutcome({ state: "verification_failed", providerId: id }), true);
+  for (const state of ["unknown", "claimed", "not_started"])
+    assert.equal(isSettledOutcome({ state }), false);
+  assert.equal(isSettledOutcome({ state: "confirmed" }), false);
+  assert.equal(isSettledOutcome(null), false);
+});

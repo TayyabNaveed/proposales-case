@@ -67,7 +67,7 @@ export function ProposalView({
           <p>Enter the demo access code above to create a proposal.</p>
         ) : (
           <>
-            {!flow.pending && (
+            {!flow.pending && !flow.outcome?.providerId && (
               <button
                 className="primary"
                 disabled={!flow.canGenerate || blocked}

@@ -224,3 +224,10 @@ Final HTTP integration passed (1/1): unauthorised/cross-origin writes rejected, 
 - The category composition (proposal-4) was implemented by a separate agent session, then reviewed, typing-fixed and merged. The test typing error would have failed the production build, which type-checks the tests.
 - Decision (Tayyab): new proposals use the category layout by default; `PROPOSAL_COMPOSITION=proposal-3` opts out. Existing proposals keep their own composition. Creation needs the category entries imported, so the deploy is followed immediately by the hosted-image check and import.
 - Follow-up (Tayyab): rename the variable to `STABLE_PROPOSAL_COMPOSITION`. When set, it pins that composition; otherwise the latest is used. Behaviour unchanged; name only.
+
+## 11 October 2026 — Saved proposal requests released once settled
+
+- Symptom (Tayyab): every page load said "Your saved proposal request is restored…".
+- Root cause: the browser recovery copy of a proposal request is saved before dispatch to survive a lost response. It was cleared only on a definitive pre-admission rejection or "Start another version"; a successful creation never released it. Every reload therefore restored a finished request, switched to that business and could block changing businesses.
+- Ruling: once the server reports the proposal's Proposales ID (confirmed, or created with a failed read-back; identity is durable server-side), the browser copy is released (`isSettledOutcome`). This happens after creation, after a progress check, and on page load, where an old saved request is status-checked first and released quietly. Uncertain or unknown outcomes keep it, as before.
+- After a settled proposal the step offers "Open in Proposales" and "Start another version", not a second create. 164 offline tests, build.

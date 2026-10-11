@@ -1,7 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { reports, reportSchema, type ReportV2 } from "../domain/reports";
-import { findSavedGeneration, canAdoptReport } from "../domain/workbench";
+import { findSavedGeneration, canAdoptReport,
+  isSettledOutcome,
+} from "../domain/workbench";
 import { apiRequest } from "./workbench/api";
 import { ResearchPanel } from "./ResearchPanel";
 import { UsageLine } from "./workbench/UsageLine";
@@ -76,19 +78,34 @@ export function ExampleWorkbench() {
     };
   }, []);
   useEffect(() => {
-    if (!saved) return;
-    setTab(saved.reportId.startsWith("live-") ? "research" : "examples");
-    if (!session.authenticated) return;
+    if (!saved || !session.authenticated) return;
     let cancelled = false;
     setRecoveryBlocked(true);
-    apiRequest<{ recommendation: { report: ReportV2 } }>(
-      "/api/recommendations?id=" +
-        encodeURIComponent(saved.request.recommendationId),
+    // A saved request whose proposal already exists has done its job: release it
+    // quietly. Only an unfinished or uncertain one is restored.
+    apiRequest<{ outcome: { state: string; providerId?: string } }>(
+      "/api/drafts?requestId=" + encodeURIComponent(saved.request.requestId),
       undefined,
       session.expire,
     )
+      .then((status) => {
+        if (cancelled) return null;
+        if (isSettledOutcome(status.outcome)) {
+          localStorage.removeItem("case-generation:" + saved.reportId);
+          window.dispatchEvent(new Event("case-generation-changed"));
+          setRecoveryBlocked(false);
+          return null;
+        }
+        setTab(saved.reportId.startsWith("live-") ? "research" : "examples");
+        return apiRequest<{ recommendation: { report: ReportV2 } }>(
+          "/api/recommendations?id=" +
+            encodeURIComponent(saved.request.recommendationId),
+          undefined,
+          session.expire,
+        );
+      })
       .then((v) => {
-        if (cancelled) return;
+        if (cancelled || !v) return;
         const r = reportSchema.parse(v.recommendation.report);
         if (r.id !== saved.reportId)
           throw Error("Saved proposal belongs to another business.");

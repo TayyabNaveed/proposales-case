@@ -13,6 +13,7 @@ import {
   canRestartRecommendation,
   canReleaseRejectedGeneration,
   type Adjustment,
+  isSettledOutcome,
 } from "../../domain/workbench";
 import { apiRequest, readSaved, explanations } from "./api";
 import type { DemoSession } from "./useDemoSession";
@@ -123,8 +124,7 @@ export function useProposalWorkflow(
             "/api/drafts?requestId=" + encodeURIComponent(p.requestId),
           );
           if (cancelled || rev !== revision.current) return;
-          setOutcome(v.outcome);
-          setMessage(v.outcome.message);
+          settle(v.outcome);
         }
       } catch (e) {
         if (!cancelled && rev === revision.current)
@@ -266,8 +266,7 @@ export function useProposalWorkflow(
     try {
       const v = await request<{ outcome: Outcome }>("/api/drafts", p);
       if (rev !== revision.current) return;
-      setOutcome(v.outcome);
-      setMessage(v.outcome.message);
+      settle(v.outcome);
     } catch (e) {
       if (rev === revision.current) {
         if (
@@ -297,6 +296,19 @@ export function useProposalWorkflow(
       setBusy("");
     }
   }
+  // Keep the outcome on screen; drop the browser recovery copy once settled.
+  function settle(o: Outcome) {
+    setOutcome(o);
+    setMessage(o.message);
+    if (!report || !isSettledOutcome(o)) return;
+    try {
+      localStorage.removeItem(key(report.id));
+      window.dispatchEvent(new Event("case-generation-changed"));
+    } catch {
+      return;
+    }
+    setPending(null);
+  }
   async function checkDraft() {
     if (!pending || action.current) return;
     action.current = true;
@@ -305,8 +317,7 @@ export function useProposalWorkflow(
       const v = await request<{ outcome: Outcome }>(
         "/api/drafts?requestId=" + pending.requestId,
       );
-      setOutcome(v.outcome);
-      setMessage(v.outcome.message);
+      settle(v.outcome);
     } catch (e) {
       setMessage((e as Error).message);
     } finally {
