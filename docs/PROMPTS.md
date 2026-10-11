@@ -1,8 +1,11 @@
 # Prompt foundation
 
-Active families are `research-report-5` (`src/prompts/research-report/v5.ts`) and `service-selector-1` (`service-recommendation/v1.ts`). `active.ts` pins them.
+Active families are `business-identity-1` (`src/prompts/business-identity/v1.ts`), `research-report-6` (`research-report/v6.ts`) and `service-selector-1` (`service-recommendation/v1.ts`). `active.ts` pins them.
 
-`research-report-5` returns identity as quoted candidates that `domain/identity.ts` verifies (`research-validation-5`). It replaces the word-matching identity gate and the v3/v4 wording adjustments. Thresholds are named in `identityThresholds`: name containment 0.8, location containment 0.8. They are measured with `scripts/eval-identity.ts --repeat 3`, not tuned per case. Earlier versions are retained for replay and rollback.
+- `business-identity-1` is the identify stage. It returns up to three candidates with quoted name and location evidence and the sources it believes are each business's own website. `domain/identity.ts` verifies them (`identity-validation-1`).
+- `research-report-6` writes the report for the operator-chosen business from that business's sources only. It no longer decides identity; its wording is otherwise unchanged from v5.
+- Thresholds are named in `identityThresholds`: name containment 0.8, location containment 0.8, website resemblance 0.5. They are measured with `scripts/eval-identity.ts --repeat 3`, not tuned per case.
+- Earlier versions, including `research-report-5`, which decided identity inside the report, are retained for replay and rollback.
 
 Validation `research-validation-4` removes an individual unsupported finding or action and discloses the removal, instead of rejecting every supported statement. An unsupported summary still rejects the report. Failures record which check failed as a short code, never raw model text. Named sections reconstruct the exact previously shipped instruction text; extraction hash regressions verify that no policy text changed. Earlier research versions whose text was not retained are unavailable for replay.
 

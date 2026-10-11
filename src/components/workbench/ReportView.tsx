@@ -45,10 +45,21 @@ export function ReportView({ report }: { report: ReportV2 }) {
       <p className="summary">{report.summary}</p>
       {report.identityStatus === "confirmed" && identity?.candidates[0] && (
         <p className="identity-match">
-          Matched “{identity.candidates[0].name.text}”
+          {identity.chosenBy === "operator" ? "Chosen by you: " : "Matched "}“
+          {identity.candidates[0].name.text}”
           {identity.candidates[0].location &&
             ` · “${identity.candidates[0].location.text}”`}{" "}
           in {sourceLink(identity.candidates[0].name.sourceId)}
+          {identity.website && (
+            <>
+              {" · Website: "}
+              {identity.website.kind === "selected"
+                ? sourceLink(identity.website.sourceId)
+                : identity.website.kind === "typed"
+                  ? identity.website.url
+                  : "none selected"}
+            </>
+          )}
         </p>
       )}
       {report.identityStatus === "ambiguous" && (

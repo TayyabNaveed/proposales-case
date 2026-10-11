@@ -6,10 +6,11 @@ import fs from "node:fs";
 import { reports, type ReportV2 } from "../src/domain/reports.js";
 import { recordedFor } from "../src/domain/workbench.js";
 const searches = new Map<string, any>(),
+  identifyRuns = new Map<string, any>(),
   reportRuns = new Map<string, any>(),
   recommendations = new Map<string, any>(),
   drafts = new Map<string, any>();
-const counts = { search: 0, report: 0, selection: 0, create: 0, status: 0 };
+const counts = { search: 0, identify: 0, report: 0, selection: 0, create: 0, status: 0 };
 let authenticated = false;
 const reportFailures = new Set<string>(),
   selectionFailures = new Set<string>();
@@ -60,13 +61,58 @@ function makeSearch(name: string): any {
   searches.set(id, record);
   return record;
 }
-function makeReport(search: any): any {
+// "Two Matches" yields two candidates and "No Match" none, to exercise the dialog.
+function makeIdentify(search: any): any {
+  const id = randomUUID(),
+    ev = search.result.evidence,
+    name = search.input.businessName;
+  const one = (sourceId: string, text: string, place: string) => ({
+    sourceIds: [sourceId],
+    name: { sourceId, text },
+    location: { sourceId, text: place },
+    websiteSourceIds: [sourceId],
+  });
+  const candidates =
+    name === "No Match"
+      ? []
+      : name === "Two Matches"
+        ? [one(ev[0].id, name + " AB", "Stockholm"), one(ev[1].id, name, "Solna")]
+        : [one(ev[0].id, name, "Stockholm")];
+  const record = {
+    id,
+    stage: "identify",
+    state: "ready",
+    input: { searchId: search.id },
+    errorCode: null,
+    createdAt: now(),
+    expiresAt: fresh(),
+    cacheHit: false,
+    diagnostics: null,
+    result: {
+      model: "synthetic-browser-fixture",
+      promptVersion: "business-identity-1",
+      attempts: 1,
+      durationMs: 1,
+      usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
+      status: candidates.length === 1 ? "confirmed" : "ambiguous",
+      identity: {
+        reason: "Synthetic browser fixture.",
+        matchedSourceIds: candidates.length === 1 ? candidates[0].sourceIds : [],
+        candidates,
+        rejected: [],
+      },
+    },
+  };
+  identifyRuns.set(id, record);
+  return record;
+}
+function makeReport(search: any, identifyId?: string, choice?: any): any {
   const id = randomUUID(),
     record = {
       id,
       stage: "report",
       state: "ready",
-      input: { searchId: search.id },
+      input: { searchId: search.id, identifyId, choice },
       errorCode: null,
       createdAt: now(),
       expiresAt: fresh(),
@@ -75,7 +121,7 @@ function makeReport(search: any): any {
       result: {
         report: liveReport(search.input.businessName, id),
         model: "synthetic-browser-fixture",
-        promptVersion: "research-report-5",
+        promptVersion: "research-report-6",
         attempts: 1,
         durationMs: 1,
         usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
@@ -204,6 +250,16 @@ createServer(async (req, res) => {
         reply(res, { record: r });
         return;
       }
+      if (u.pathname === "/api/identify") {
+        if (req.method === "GET") {
+          const r = identifyRuns.get(u.searchParams.get("id")!);
+          reply(res, { record: r }, r ? 200 : 404);
+          return;
+        }
+        counts.identify++;
+        reply(res, { record: makeIdentify(searches.get(body.searchId)) });
+        return;
+      }
       if (u.pathname === "/api/reports") {
         if (req.method === "GET") {
           reply(res, { record: reportRuns.get(u.searchParams.get("id")!) });
@@ -211,7 +267,7 @@ createServer(async (req, res) => {
         }
         counts.report++;
         const s = searches.get(body.searchId);
-        const r = makeReport(s);
+        const r = makeReport(s, body.identifyId, body.choice);
         if (
           s.input.businessName === "Report Failure" &&
           !reportFailures.has(s.id)

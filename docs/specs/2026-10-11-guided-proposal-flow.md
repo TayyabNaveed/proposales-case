@@ -1,6 +1,6 @@
 # Guided proposal flow
 
-Status: approved direction, 11 October 2026. Implemented phase by phase; each phase is reviewed before it is committed. How this spec was produced is described in [WORKFLOW](../WORKFLOW.md).
+Status: approved direction, 11 October 2026. Phase 1 implemented (awaiting review); later phases pending. Each phase is reviewed before it is committed. How this spec was produced is described in [WORKFLOW](../WORKFLOW.md).
 
 ## Problem
 

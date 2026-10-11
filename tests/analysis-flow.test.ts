@@ -16,74 +16,106 @@ const search = {
   createdAt: new Date().toISOString(),
   expiresAt: fresh,
 } as any;
+const identified = {
+  id: "identify",
+  stage: "identify",
+  state: "ready",
+  input: { searchId: "search" },
+  result: { status: "confirmed", identity: { candidates: [{}] } },
+  createdAt: new Date().toISOString(),
+  expiresAt: fresh,
+} as any;
+const choice = { candidate: 0, website: { kind: "none" as const } };
 const report = {
   id: "report",
   stage: "report",
   state: "ready",
-  input: { searchId: "search" },
+  input: { searchId: "search", identifyId: "identify", choice },
   result: { report: { ...reports[1], id: "live-report" } },
   createdAt: new Date().toISOString(),
   expiresAt: fresh,
 } as any;
-test("deliberate analysis progresses in order and publishes report before selecting services", async () => {
-  const { analyseBusiness } = await import("../src/domain/analysis-flow.js");
+const quiet = { isCurrent: () => true, onProgress: () => {} };
+
+test("identify runs search then identify and stops for the operator's choice", async () => {
+  const { identifyStep } = await import("../src/domain/analysis-flow.js");
   const calls: string[] = [];
-  await analyseBusiness({
+  const r = await identifyStep({
+    ...quiet,
     input,
     request: async (path: string) => {
       calls.push(path);
-      return path === "/api/research" ? search : report;
+      return path === "/api/research" ? search : identified;
     },
-    isCurrent: () => true,
-    onSearch: () => {},
-    onReport: () => {
-      calls.push("report-visible");
+    onSearch: () => calls.push("sources-saved"),
+    onIdentify: () => calls.push("choose"),
+  });
+  assert.equal(r?.id, "identify");
+  assert.deepEqual(calls, ["/api/research", "sources-saved", "/api/identify", "choose"]);
+});
+
+test("after the choice, the report is published before services are suggested", async () => {
+  const { continueWithChoice } = await import("../src/domain/analysis-flow.js");
+  const calls: unknown[] = [];
+  await continueWithChoice({
+    ...quiet,
+    search,
+    identify: identified,
+    choice,
+    request: async (path: string, body: unknown) => {
+      calls.push({ path, body });
+      return report;
     },
-    onProgress: () => {},
+    onSavedReport: () => {},
+    onReport: () => calls.push("report-visible"),
     recommend: async () => {
       calls.push("selection");
     },
   });
   assert.deepEqual(calls, [
-    "/api/research",
-    "/api/reports",
+    {
+      path: "/api/reports",
+      body: { searchId: "search", identifyId: "identify", choice, refresh: false },
+    },
     "report-visible",
     "selection",
   ]);
 });
-test("report retry keeps sources and recommendation retry keeps report; reopening performs no work by itself", async () => {
-  const { analyseBusiness } = await import("../src/domain/analysis-flow.js");
+
+test("a saved report is reused only for the same choice; a failed one is retried explicitly", async () => {
+  const { continueWithChoice } = await import("../src/domain/analysis-flow.js");
   const calls: unknown[] = [];
   const deps = {
-    input,
+    ...quiet,
     search,
-    report: { ...report, state: "failed", result: null },
+    identify: identified,
+    choice,
     request: async (path: string, body: unknown) => {
       calls.push({ path, body });
       return report;
     },
-    isCurrent: () => true,
-    onSearch: () => {},
+    onSavedReport: () => {},
     onReport: () => {},
-    onProgress: () => {},
     recommend: async () => {
       calls.push("selection");
     },
   };
-  await analyseBusiness(deps);
-  assert.deepEqual(calls, [
-    { path: "/api/reports", body: { searchId: "search", refresh: true } },
-    "selection",
-  ]);
-  calls.length = 0;
-  await analyseBusiness({ ...deps, report });
+  await continueWithChoice({ ...deps, report });
   assert.deepEqual(calls, ["selection"]);
+  calls.length = 0;
+  const other = { candidate: 0, website: { kind: "typed" as const, url: "https://juniper.example" } };
+  await continueWithChoice({ ...deps, report, choice: other });
+  assert.equal((calls[0] as any).body.refresh, false);
+  calls.length = 0;
+  await continueWithChoice({ ...deps, report: { ...report, state: "failed", result: null } });
+  assert.equal((calls[0] as any).body.refresh, true);
 });
+
 test("stale results cannot advance into another business or dispatch further paid stages", async () => {
-  const { analyseBusiness } = await import("../src/domain/analysis-flow.js");
+  const { identifyStep } = await import("../src/domain/analysis-flow.js");
   let current = true;
   const calls: string[] = [];
-  await analyseBusiness({
+  await identifyStep({
     input,
     request: async (path: string) => {
       calls.push(path);
@@ -91,33 +123,31 @@ test("stale results cannot advance into another business or dispatch further pai
       return search;
     },
     isCurrent: () => current,
+    onProgress: () => {},
     onSearch: () => {
       throw Error("stale publish");
     },
-    onReport: () => {},
-    onProgress: () => {},
-    recommend: async () => {
+    onIdentify: () => {
       throw Error("stale paid work");
     },
   });
   assert.deepEqual(calls, ["/api/research"]);
 });
+
 test("partial and running stages stop progression and cannot silently become examples", async () => {
-  const { analyseBusiness } = await import("../src/domain/analysis-flow.js");
+  const { identifyStep } = await import("../src/domain/analysis-flow.js");
   let writes = 0;
   for (const state of ["partial", "running"])
     await assert.rejects(
-      analyseBusiness({
+      identifyStep({
+        ...quiet,
         input,
         request: async () => {
           writes++;
           return { ...search, state };
         },
-        isCurrent: () => true,
         onSearch: () => {},
-        onReport: () => {},
-        onProgress: () => {},
-        recommend: async () => {
+        onIdentify: () => {
           throw Error("dispatch");
         },
       }),

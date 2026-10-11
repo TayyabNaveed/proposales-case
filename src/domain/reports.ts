@@ -5,8 +5,16 @@ const capability = z
   .object({
     status: z.enum(["present", "absent", "unknown"]),
     evidenceIds: z.array(id),
+    // A fact the operator stated in the app; needs no source.
+    confirmedBy: z.literal("operator").optional(),
   })
   .strict();
+export const operatorWebsiteSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("selected"), sourceId: id }).strict(),
+  z.object({ kind: z.literal("typed"), url: z.url() }).strict(),
+  z.object({ kind: z.literal("none") }).strict(),
+]);
+export type OperatorWebsite = z.infer<typeof operatorWebsiteSchema>;
 export const reportSchema = z
   .object({
     id,
@@ -24,6 +32,9 @@ export const reportSchema = z
         candidates: identityOutputSchema.shape.candidates,
         // Why candidates the model proposed were removed; codes only.
         rejected: z.array(z.enum(rejectionCodes)),
+        // Guided flow: the operator chose the business and stated the website.
+        chosenBy: z.literal("operator").optional(),
+        website: operatorWebsiteSchema.optional(),
       })
       .strict()
       .optional(),
@@ -96,7 +107,7 @@ export const reportSchema = z
       bad("identity_mismatch");
     for (const c of Object.values(r.capabilities))
       if (
-        (c.status !== "unknown" && !c.evidenceIds.length) ||
+        (c.status !== "unknown" && !c.evidenceIds.length && !c.confirmedBy) ||
         c.evidenceIds.some((e) => !evidence.has(e))
       )
         bad("unsupported_capability");

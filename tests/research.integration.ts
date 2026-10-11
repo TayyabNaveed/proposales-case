@@ -17,6 +17,11 @@ test("research stages deduplicate concurrent admissions, isolate cache scope, re
         .readFileSync("db/migrations/005_research.sql", "utf8")
         .replaceAll("case_workflow", schema),
     );
+    await a.query(
+      fs
+        .readFileSync("db/migrations/007_identify_stage.sql", "utf8")
+        .replaceAll("case_workflow", schema),
+    );
     const x = createResearchStore(a, schema, () => 10),
       y = createResearchStore(b, schema, () => 10);
     const args = {
@@ -86,19 +91,21 @@ test("live report cache reuses sources and recommendations, and scoped/expired r
   const schema = "case_test_" + randomBytes(8).toString("hex"),
     pool = createDatabase();
   let searchCalls = 0,
+    identifyCalls = 0,
     reportCalls = 0;
+  const identified = {
+    status: "confirmed",
+    reason: "One listing names the studio in Stockholm.",
+    candidates: [
+      {
+        sourceIds: ["s1"],
+        name: { sourceId: "s1", text: "Juniper Ceramics" },
+        location: { sourceId: "s1", text: "Stockholm" },
+        websiteSourceIds: ["s1"],
+      },
+    ],
+  };
   const output = {
-    identity: {
-      status: "confirmed",
-      reason: "One listing names the studio in Stockholm.",
-      candidates: [
-        {
-          sourceIds: ["s1"],
-          name: { sourceId: "s1", text: "Juniper Ceramics" },
-          location: { sourceId: "s1", text: "Stockholm" },
-        },
-      ],
-    },
     summary: "A studio offers classes.",
     findings: [
       {
@@ -129,7 +136,11 @@ test("live report cache reuses sources and recommendations, and scoped/expired r
     });
   try {
     await pool.query(`CREATE SCHEMA "${schema}"`);
-    for (const m of ["003_recommendations_and_drafts", "005_research"])
+    for (const m of [
+      "003_recommendations_and_drafts",
+      "005_research",
+      "007_identify_stage",
+    ])
       await pool.query(
         fs
           .readFileSync("db/migrations/" + m + ".sql", "utf8")
@@ -154,9 +165,12 @@ test("live report cache reuses sources and recommendations, and scoped/expired r
           usage: { credits: 1 },
         });
       },
-      modelFetch: async () => {
-        reportCalls++;
-        return response(output);
+      // The identify and report stages are told apart by their system prompts.
+      modelFetch: async (_url, init) => {
+        const identify = String(init?.body).includes("Find which businesses");
+        if (identify) identifyCalls++;
+        else reportCalls++;
+        return response(identify ? identified : output);
       },
     });
     const searched = await service.search(
@@ -167,10 +181,30 @@ test("live report cache reuses sources and recommendations, and scoped/expired r
       },
       "a",
     );
-    const built = await service.report(searched.id, "a");
+    const candidates = await service.identify(searched.id, "a");
+    assert.equal(candidates.state, "ready");
+    assert.equal((await service.identify(searched.id, "a")).cacheHit, true);
+    const choice = {
+      candidate: 0,
+      website: { kind: "selected" as const, sourceId: "s1" },
+    };
+    const built = await service.report(searched.id, candidates.id, choice, "a");
     assert.equal(built.state, "ready");
-    assert.equal((await service.report(searched.id, "a")).cacheHit, true);
+    assert.equal(
+      (await service.report(searched.id, candidates.id, choice, "a")).cacheHit,
+      true,
+    );
+    // A different choice is a different report; an invalid one never reaches the model.
+    await assert.rejects(
+      service.report(searched.id, candidates.id, { ...choice, candidate: 1 }, "a"),
+      /research_choice_invalid/,
+    );
+    await assert.rejects(
+      service.report(searched.id, candidates.id, choice, "b"),
+      /research_missing/,
+    );
     assert.equal(searchCalls, 3);
+    assert.equal(identifyCalls, 1);
     assert.equal(reportCalls, 1);
     const { reportResultSchema } =
       await import("../src/domain/research-state.js");

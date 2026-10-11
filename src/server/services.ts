@@ -39,6 +39,7 @@ export function researchHandlers() {
   return createResearchApi({
     consume,
     search: research.search,
+    identify: research.identify,
     report: research.report,
     get: research.get,
   });

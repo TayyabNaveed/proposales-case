@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { reportSchema } from "./reports.js";
-import { researchInputSchema } from "./research.js";
+import { researchInputSchema, operatorChoiceSchema } from "./research.js";
+import { identityOutputSchema, rejectionCodes } from "./identity.js";
 const count = z.number().int().nonnegative();
 export const usageSchema = z.object({
   inputTokens: count.nullable(),
@@ -39,6 +40,16 @@ export const reportResultSchema = z.object({
   usage: usageSchema,
   provenance: provenanceSchema.optional(),
 });
+// Identify stage: verified candidates for the operator to choose from.
+export const identifyResultSchema = reportResultSchema.omit({ report: true }).extend({
+  status: z.enum(["confirmed", "ambiguous"]),
+  identity: z.object({
+    reason: z.string(),
+    matchedSourceIds: z.array(z.string()),
+    candidates: identityOutputSchema.shape.candidates,
+    rejected: z.array(z.enum(rejectionCodes)),
+  }),
+});
 export const reportDiagnosticsSchema = reportResultSchema
   .omit({ report: true })
   .extend({
@@ -63,8 +74,20 @@ export const publicResearchSchema = z
     }),
     z.object({
       ...common,
-      stage: z.literal("report"),
+      stage: z.literal("identify"),
       input: z.object({ searchId: z.string() }),
+      result: identifyResultSchema.nullable(),
+      diagnostics: reportDiagnosticsSchema.nullable(),
+    }),
+    z.object({
+      ...common,
+      stage: z.literal("report"),
+      // identifyId and choice are absent on reports made before the guided flow.
+      input: z.object({
+        searchId: z.string(),
+        identifyId: z.string().optional(),
+        choice: operatorChoiceSchema.optional(),
+      }),
       result: reportResultSchema.nullable(),
       diagnostics: reportDiagnosticsSchema.nullable(),
     }),
@@ -75,6 +98,8 @@ export const publicResearchSchema = z
   });
 export type PublicResearchRecord = z.infer<typeof publicResearchSchema>;
 export type SearchStage = Extract<PublicResearchRecord, { stage: "search" }>;
+export type IdentifyStage = Extract<PublicResearchRecord, { stage: "identify" }>;
 export type ReportStage = Extract<PublicResearchRecord, { stage: "report" }>;
+export type IdentifyResult = z.infer<typeof identifyResultSchema>;
 export type SearchResult = z.infer<typeof searchResultSchema>;
 export type ResearchReportResult = z.infer<typeof reportResultSchema>;

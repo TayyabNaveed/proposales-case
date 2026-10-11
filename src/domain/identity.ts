@@ -14,6 +14,9 @@ export const identityThresholds = {
   // Quoted vs supplied location, containment either way: a city inside a full
   // address or a full address around the typed city.
   locationContainment: 0.8,
+  // Website suggestions only filter out directories and social sites, since the
+  // operator makes the final pick: domain and name resemble each other either way.
+  websiteResemblance: 0.5,
 } as const;
 
 const quote = z
@@ -30,6 +33,8 @@ export const identityOutputSchema = z
             sourceIds: z.array(z.string().min(1).max(40)).min(1).max(8),
             name: quote,
             location: quote.nullable(),
+            // Sources the model believes are the business's own website.
+            websiteSourceIds: z.array(z.string().min(1).max(40)).max(8).optional(),
           })
           .strict(),
       )
@@ -88,6 +93,31 @@ export function locationResemblance(a: string, b: string) {
   return Math.max(size(x) ? s / size(x) : 0, size(y) ? s / size(y) : 0);
 }
 
+// Domain without "www." and the final label: handyheroes.se → "handyheroes".
+const domainName = (url?: string) => {
+  const h = host(url);
+  return h ? h.split(".").slice(0, -1).join("") : "";
+};
+function ownSites(
+  c: VerifiedCandidate,
+  businessName: string,
+  sources: Map<string, Source>,
+  listed: string[],
+) {
+  const seen = new Set<string>();
+  return [...new Set(c.websiteSourceIds ?? [])].filter((id) => {
+    const d = domainName(sources.get(id)?.url);
+    const own =
+      listed.includes(id) &&
+      !!d &&
+      !seen.has(d) &&
+      Math.max(nameResemblance(d, businessName), nameResemblance(businessName, d)) >=
+        identityThresholds.websiteResemblance;
+    // One suggestion per website: further pages of the same domain are dropped.
+    if (own) seen.add(d);
+    return own;
+  });
+}
 const host = (url?: string) => {
   try {
     return url ? new URL(url).hostname.replace(/^www\./, "") : null;
@@ -146,7 +176,12 @@ export function verifyCandidate(
   if (!onWebsite && !inSource && !quoteAnchors)
     return locationProblem ?? "unanchored";
   // Only a location quote that passed every check is kept for display.
-  return { ...c, sourceIds: listed, location: quoteAnchors ? c.location : null };
+  return {
+    ...c,
+    sourceIds: listed,
+    location: quoteAnchors ? c.location : null,
+    websiteSourceIds: ownSites(c, input.businessName, sources, listed),
+  };
 }
 
 export function decideIdentity(

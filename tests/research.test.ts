@@ -22,18 +22,17 @@ function assertDropped(build: () => { findings: unknown[]; actions: unknown[]; u
   assert.equal(r.findings.length + r.actions.length <= 1, true);
   assert.ok(r.uncertainties.some((u) => /removed because the sources did not support/.test(u)));
 }
+// The operator's choice from the identify stage: this candidate, its own website.
+const chosen = {
+  candidate: {
+    sourceIds: ["s1"],
+    name: { sourceId: "s1", text: "Juniper Ceramics" },
+    location: { sourceId: "s1", text: "Stockholm" },
+    websiteSourceIds: ["s1"],
+  },
+  website: { kind: "selected" as const, sourceId: "s1" },
+};
 const output = {
-  identity: {
-      status: "confirmed",
-      reason: "One listing names the studio in Stockholm.",
-      candidates: [
-        {
-          sourceIds: ["s1"],
-          name: { sourceId: "s1", text: "Juniper Ceramics" },
-          location: { sourceId: "s1", text: "Stockholm" },
-        },
-      ],
-    },
   summary: "A pottery studio offers beginner classes.",
   findings: [
     {
@@ -51,20 +50,32 @@ const output = {
 };
 test("live report uses owned evidence and cannot turn missing search results into absence or measured rankings", async () => {
   const { buildLiveReport } = await import("../src/domain/research.js");
-  const r = buildLiveReport(input, evidence, output, "live-123");
+  const r = buildLiveReport(input, evidence, output, "live-123", chosen);
   assert.equal(r.mode, "live");
   assert.equal(r.capabilities.website.status, "present");
   assert.equal(r.capabilities.profile.status, "unknown");
   assert.equal(r.capabilities.campaign.status, "unknown");
   assert.equal(r.evidence[0].url, "https://juniper.example/");
   assert.equal(r.goals.length, 0);
+  // The website is the operator's fact: "none" is absent, attributed, not inferred.
   const absent = buildLiveReport(
     { ...input, website: undefined },
     evidence,
     output,
     "live-123",
+    { ...chosen, website: { kind: "none" } },
   );
-  assert.equal(absent.capabilities.website.status, "unknown");
+  assert.equal(absent.capabilities.website.status, "absent");
+  assert.equal(absent.capabilities.website.confirmedBy, "operator");
+  assert.equal(r.identity?.chosenBy, "operator");
+  assert.throws(
+    () =>
+      buildLiveReport(input, evidence, output, "live-123", {
+        ...chosen,
+        website: { kind: "selected", sourceId: "s9" },
+      }),
+    /research_choice_invalid/,
+  );
   assertDropped(() =>
     buildLiveReport(
       input,
@@ -75,7 +86,7 @@ test("live report uses owned evidence and cannot turn missing search results int
           { ...output.findings[0], claim: "Ranked number 1 on Google." },
         ],
       },
-      "live-123",
+      "live-123", chosen,
     ),
   );
   assertDropped(() =>
@@ -86,22 +97,12 @@ test("live report uses owned evidence and cannot turn missing search results int
         ...output,
         findings: [{ ...output.findings[0], evidenceIds: ["invented"] }],
       },
-      "live-123",
+      "live-123", chosen,
     ),
   );
 });
-test("ambiguous name/location remains ambiguous and fabricated source quotations are rejected", async () => {
+test("fabricated source quotations are rejected", async () => {
   const { buildLiveReport } = await import("../src/domain/research.js");
-  assert.equal(
-    buildLiveReport(
-      // Without the website anchor, a location the sources contradict stays ambiguous.
-      { ...input, website: undefined, location: "Malmo" },
-      evidence,
-      output,
-      "live-123",
-    ).identityStatus,
-    "ambiguous",
-  );
   assertDropped(() =>
     buildLiveReport(
       input,
@@ -112,7 +113,7 @@ test("ambiguous name/location remains ambiguous and fabricated source quotations
           { ...output.findings[0], claim: "The owner requests a new website." },
         ],
       },
-      "live-123",
+      "live-123", chosen,
     ),
   );
 });
@@ -233,7 +234,7 @@ test("report model treats source instructions as data and rejects fabricated obs
         usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
       });
     };
-  const r = await generateResearchReport(input, source, "live-123", {
+  const r = await generateResearchReport(input, source, "live-123", chosen, {
     apiKey: "synthetic",
     model: "deepseek-flash",
     fetch: transport(output),
@@ -242,7 +243,7 @@ test("report model treats source instructions as data and rejects fabricated obs
   assert.equal(r.usage.inputTokens, 100);
   assert.equal(r.attempts, 1);
   await assert.rejects(
-    generateResearchReport(input, source, "live-123", {
+    generateResearchReport(input, source, "live-123", chosen, {
       apiKey: "synthetic",
       model: "deepseek-flash",
       fetch: transport({ ...output, summary: "No website exists." }),
@@ -276,7 +277,7 @@ test("unverified absence and numeric performance claims cannot hide in summaries
       input,
       evidence,
       { ...output, summary: "This business has no website." },
-      "live-123",
+      "live-123", chosen,
     ),
   );
   assertDropped(() =>
@@ -293,12 +294,12 @@ test("unverified absence and numeric performance claims cannot hide in summaries
           },
         ],
       },
-      "live-123",
+      "live-123", chosen,
     ),
   );
 });
 
-test("inferred absence with qualifiers and mixed-business identity cannot become a confirmed live report", async () => {
+test("inferred absence with qualifiers is removed", async () => {
   const { buildLiveReport } = await import("../src/domain/research.js");
   assertDropped(() =>
     buildLiveReport(
@@ -314,33 +315,8 @@ test("inferred absence with qualifiers and mixed-business identity cannot become
           },
         ],
       },
-      "live-123",
+      "live-123", chosen,
     ),
-  );
-  const conflicting = [
-    {
-      ...evidence[0],
-      label: "Juniper Ceramics Stockholm",
-      excerpt:
-        "Juniper Ceramics is located in Gothenburg. Other studios operate in Stockholm.",
-    },
-  ];
-  // Code verifies that identity quotes exist; it cannot tell that "Stockholm"
-  // here describes other studios. That judgement is the model's, and the quotes
-  // are shown to the user. A model ambiguity verdict always stands.
-  assert.equal(
-    buildLiveReport(
-      input,
-      conflicting,
-      {
-        ...output,
-        identity: { ...output.identity, status: "ambiguous" },
-        findings: [],
-        actions: [],
-      },
-      "live-123",
-    ).identityStatus,
-    "ambiguous",
   );
 });
 test("interrupted report restart is explicit after its window and uses saved sources", async () => {
@@ -405,7 +381,7 @@ test("literal observed quotes tolerate source whitespace and sourced discounts a
       ],
       actions: [],
     },
-    "live-123",
+    "live-123", chosen,
   );
   assert.equal(r.findings.length, 2);
   assertDropped(() =>
@@ -422,7 +398,7 @@ test("literal observed quotes tolerate source whitespace and sourced discounts a
           },
         ],
       },
-      "live-123",
+      "live-123", chosen,
     ),
   );
 });
@@ -499,7 +475,7 @@ test("one unsupported finding is dropped without discarding the supported report
         { id: "a2", text: "Promote the awards", findingIds: ["f2"] },
       ],
     },
-    "live-123",
+    "live-123", chosen,
   );
   assert.deepEqual(r.findings.map((f) => f.id), ["f1"]);
   assert.deepEqual(r.actions.map((a) => [a.id, a.findingIds]), [["a1", ["f1"]]]);
@@ -508,7 +484,7 @@ test("one unsupported finding is dropped without discarding the supported report
 test("a rejected summary reports which check failed", async () => {
   const { buildLiveReport } = await import("../src/domain/research.js");
   assert.throws(
-    () => buildLiveReport(input, evidence, { ...output, summary: "This business has no website." }, "live-123"),
+    () => buildLiveReport(input, evidence, { ...output, summary: "This business has no website." }, "live-123", chosen),
     /research_unsupported_summary/,
   );
 });

@@ -12,6 +12,10 @@ export const explanations: Record<string, string> = {
     "The report could not be completed. Your sources are saved; try again.",
   research_search_partial:
     "Some sources could not be retrieved. Try again or explore an example.",
+  research_identify_failed:
+    "The business could not be identified. Your sources are saved; try again.",
+  research_choice_invalid:
+    "That choice no longer matches the saved results. Analyse the business again.",
   research_sources_missing:
     "No usable sources were found. Check the business details.",
   stale_recommendation:

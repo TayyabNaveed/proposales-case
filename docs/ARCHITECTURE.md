@@ -21,7 +21,7 @@ The case turns business evidence into catalogue recommendations and an unsent Pr
 
 ## Execution paths
 
-Live: name/location/optional website → `POST /api/research` → bounded Tavily sources → `POST /api/reports` → sourced DeepSeek report → `POST /api/recommendations` → catalogue selection. The report appears before selection finishes. A failed report retains sources; failed selection retains the report. Retry is deliberate and resumes the stage. A stale running report/selector can be deliberately restarted only after its 180/120-second admission window.
+Live: name and location → `POST /api/research` → bounded Tavily sources → `POST /api/identify` → up to three verified candidate businesses with website suggestions → **operator chooses the business and states the website** → `POST /api/reports` with that choice → a DeepSeek report from the chosen business's sources only → `POST /api/recommendations` → catalogue selection. The report appears before selection completes. A saved report is reused only for the same choice.
 
 Examples: public synthetic reports + recorded recommendations → authenticated preparation via the same selector → adjustments → proposal. Reading examples does not call a provider.
 
@@ -29,7 +29,7 @@ Creation: `POST /api/drafts` → scope-owned existing request lookup or fresh va
 
 ## Business identity
 
-The model decides which business the sources describe and returns its evidence: up to three candidates, each with source IDs, a name quote and an optional location quote copied from one source (`domain/identity.ts`). Code checks only what it can check in any language:
+The identify stage (`business-identity-1`) decides which businesses the sources describe and returns its evidence: up to three candidates, each with source IDs, a name quote and an optional location quote copied from one source (`domain/identity.ts`). Code checks only what it can check in any language:
 
 - Each quote appears in its source after Unicode normalisation, case folding and whitespace collapse.
 - The quoted name contains the typed name: character-bigram containment, so it needs no word boundaries.
@@ -38,7 +38,7 @@ The model decides which business the sources describe and returns its evidence: 
   - the typed location appears as continuous text in that source;
   - the model's location quote from that source resembles the typed location.
 
-Unverified candidates are removed and their rejection codes kept. Identity is confirmed only for exactly one verified candidate, and only when the model agreed or every competing candidate was verifiably in another location. An unconfirmed business gets no service suggestions. The UI shows the matched quotes, or the verified candidates.
+Unverified candidates are removed and their rejection codes kept. Identity is confirmed only for exactly one verified candidate, and only when the model agreed or every competing candidate was verifiably in another location. The operator then chooses one verified candidate in a dialog, and states the website: a verified suggestion (one per domain, never a directory or social site), a typed address, or none. The report records that choice as `chosenBy: "operator"`, and the website capability is `present` or `absent` with `confirmedBy: "operator"`. The AI never asserts it. With no website, building one is a valid suggestion.
 
 Code cannot judge meaning. If an excerpt names the business next to a place that refers to something else, the model's judgement decides, and the quotes are shown so a person can see why. `evals/identity` measures this on fictional cases; real-business cases stay private.
 

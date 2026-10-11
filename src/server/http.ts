@@ -74,6 +74,7 @@ export function safeError(error: unknown) {
       "asset_not_verified",
       "snapshot_tampered",
       "research_stale",
+      "research_choice_invalid",
     ],
     limits = [
       "recommendation_budget_exceeded",
@@ -102,6 +103,7 @@ export function safeError(error: unknown) {
     "research_sources_missing",
     "research_search_partial",
     "research_report_failed",
+    "research_identify_failed",
     "research_search_failed",
   ];
 

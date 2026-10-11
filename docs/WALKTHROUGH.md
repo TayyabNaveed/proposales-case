@@ -1,7 +1,7 @@
 # Code walkthrough — current refinement
 
 1. Open `src/app/page.tsx` and `components/ExampleWorkbench.tsx`. The default tab is Research a business; Explore examples contains No website/Existing website. Navigation reads/preserves state and triggers no paid work.
-2. `ResearchPanel.tsx` restores source/report IDs through GETs. `domain/analysis-flow.ts` runs only on Analyse/Continue and coordinates sources → report → recommendation. Examine the revision guard and saved-report/search linkage for stale response protection.
+2. `ResearchPanel.tsx` restores source/identify/report IDs through GETs. `domain/analysis-flow.ts` has two explicit steps: `identifyStep` (sources, then candidates; it stops for the choice) and `continueWithChoice` (report for that choice, then services). `workbench/BusinessChoice.tsx` is the one decision dialog. Revision guards prevent stale responses from advancing another business.
 3. `ReportView.tsx` shows compact findings, uncertainties and expandable attributed excerpts. `ServicesView.tsx` shows core/optional scopes and prerequisites, with provenance under Technical details. `ProposalView.tsx` shows four independent billing totals and the single handoff.
 4. `server/research-api.ts` / `api.ts` validate scope, Origin and input before consuming action budgets or invoking application services. `services.ts` wires adapters. Public research projections validate stage-specific JSON in `domain/research-state.ts`.
 5. `server/research.ts` separately admits/caches search and report. `recommendations.ts` admits selection independently. Read `src/prompts/active.ts` and the named immutable sections in each prompt file; read `docs/PROMPTS.md` for provenance.

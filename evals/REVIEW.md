@@ -21,12 +21,15 @@ All twelve explanations are consistent with the supplied synthetic evidence on t
 
 ## Business identity (research report)
 
-`scripts/eval-identity.ts --repeat 3` runs the live report model on the 11 fictional cases in `evals/identity/cases.ts`. It also runs 6 frozen real searches kept in ignored `private/`. Results: `evals/results/identity-synthetic-*.json`.
+`scripts/eval-identity.ts --repeat 3` runs the live identify model (earlier rows: the report model) on the 11 fictional cases in `evals/identity/cases.ts`. It also runs 6 frozen real searches kept in ignored `private/`. Results: `evals/results/identity-synthetic-*.json`.
 
 | Version | Runs | Correct identity | Matched sources correct | Report failures |
 |---|---|---|---|---|
 | research-report-4 + word matching | 17 (1 repetition) | 12 (71%) | not exposed | 1 |
 | research-report-5 + quoted evidence | 51 (3 repetitions) | 43 (84%) | 28/28 | 4 |
+| business-identity-1 (separate identify stage) | 51 (3 repetitions) | 51 (100%) | 36/36 | 0 |
+
+The separate identify call also suggests the business's own website: 9/9 labelled checks.
 
 - **Fixed by the new design:** legal suffixes, scripts without spaces, own-website matches without an address, names and places split across a title and an excerpt, and same-name businesses in other cities.
 - **Remaining misses:**

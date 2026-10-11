@@ -175,6 +175,17 @@ Final HTTP integration passed (1/1): unauthorised/cross-origin writes rejected, 
 - Found but not changed: the summary absence regex rejects disclaimers ("No website performance … data") and only understands English. It awaits Tayyab's decision because it is an existing safety check.
 - Not committed or pushed, per the change-approval rule.
 
+## 11 October 2026 — Guided flow, phase 1: identify → choose → report → services
+
+- Spec: docs/specs/2026-10-11-guided-proposal-flow.md. Root cause addressed: the AI was settling facts (which business; whether a website exists) that one operator answer settles.
+- New identify stage: `POST /api/identify`, prompt `business-identity-1`, its own admission, cache and daily budget. Migration 007 widens the allowed stage names; existing rows stay valid. It was applied to the case database during development. That database is shared with the deployment, but the change is backward compatible.
+- Choice: `{candidate, website: selected | typed | none}`, validated server-side. A selected website must be one of the candidate's verified suggestions, and a typed one must be a public URL. The report receives only the chosen candidate's sources (`research-report-6`). Website capability is `confirmedBy: "operator"`, so "none" makes a website build eligible. The selector is unchanged.
+- Website suggestions: the model names own-site sources. Code keeps those belonging to the candidate whose domain resembles the name, one per domain.
+- The provider's structured-call logic is shared by identify and report (one bounded call, safe diagnostics).
+- UI: the website field moved from the form to `BusinessChoice` (a native modal dialog). The business is required; the website can be picked, typed or skipped.
+- Evidence: 139 offline tests; DB 9/9 including identify cache and choice validation; build. Identify evaluation 51/51 status, 36/36 sources, 9/9 websites over 3 repetitions. Real local run for Handy Heroes AB: search cache hit; identify confirmed with handyheroes.se suggested; report website present (operator); services AI visibility + FAQ ×2 (optional). Before this change there were none.
+- Open product decision: selector suggestions remain few and optional without owner goals (selector policy). Not committed; awaiting review.
+
 ## 11 October 2026 — Configurable daily limits
 
 - Cause: the guided-flow testing hit `research_budget_exceeded`. The report stage had reached its hard-coded 10 per UTC day for the single shared demo scope. Tavily usage was 8 searches (24 credits) in total. The same cap applied to cheap model stages and to the credit-spending search, and the database range checks repeated the numbers.

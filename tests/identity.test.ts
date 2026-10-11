@@ -167,3 +167,63 @@ test("a model ambiguity verdict stands unless every competing candidate is verif
   // Doubt about the only candidate itself is the model's judgement and stands.
   assert.equal(decide(input, evidence, [osaka], "ambiguous").status, "ambiguous");
 });
+
+test("website suggestions keep the candidate's own-site sources and drop directories and social sites", () => {
+  const evidence = [
+    src("s1", "Handy Heroes AB", "Handy Heroes AB, städfirma i Stockholm.", "https://www.handyheroes.se/"),
+    src("s2", "Handy Heroes AB | Stockholm", "Städfirma i Stockholm.", "https://www.instagram.com/handyheroes.se"),
+    src("s3", "Handy Heroes AB", "Handy Heroes AB, Artillerigatan 6, Stockholm.", "https://www.largestcompanies.com/company/Handy-Heroes-AB"),
+    src("s4", "Diplomat", "Hotel Diplomat Stockholm.", "https://www.diplomathotel.com/"),
+  ];
+  const c = { ...candidate("s1", "Handy Heroes AB", null, ["s1", "s2", "s3"]), websiteSourceIds: ["s1", "s2", "s3", "s4"] };
+  const r = decide({ businessName: "Handy Heroes AB", location: "Stockholm" }, evidence, [c]);
+  assert.equal(r.status, "confirmed");
+  // s4 is not one of the candidate's sources; s2 and s3 are not its own domain.
+  assert.deepEqual(r.identity.candidates[0].websiteSourceIds, ["s1"]);
+  // Two pages of the same site are one website suggestion.
+  const pages = [...evidence, src("s5", "Home", "Handy Heroes AB.", "https://handyheroes.se/home.html")];
+  const both = { ...candidate("s1", "Handy Heroes AB", null, ["s1", "s5"]), websiteSourceIds: ["s1", "s5"] };
+  const twice = decide({ businessName: "Handy Heroes AB", location: "Stockholm" }, pages, [both]);
+  assert.deepEqual(twice.identity.candidates[0].websiteSourceIds, ["s1"]);
+});
+
+test("the identify call returns verified candidates and website suggestions without retrying", async () => {
+  const { identifyBusiness } = await import("../src/server/providers/research.js");
+  const evidence = [
+    src("s1", "Handy Heroes AB", "Handy Heroes AB är en städfirma i Stockholm.", "https://www.handyheroes.se/"),
+    src("s2", "Handy Heroes, Inc.", "General contractor in Alameda, CA.", "https://www.bbb.example/handy-heroes"),
+  ];
+  let calls = 0;
+  const reply = {
+    status: "confirmed",
+    reason: "One Stockholm business matches.",
+    candidates: [
+      { ...candidate("s1", "Handy Heroes AB", "Stockholm"), websiteSourceIds: ["s1"] },
+      { ...candidate("s2", "Handy Heroes, Inc.", "Alameda, CA"), websiteSourceIds: [] },
+    ],
+  };
+  const r = await identifyBusiness(
+    { businessName: "Handy Heroes AB", location: "Stockholm", website: undefined },
+    evidence,
+    {
+      apiKey: "synthetic",
+      model: "deepseek-flash",
+      fetch: async () => {
+        calls++;
+        return Response.json({
+          id: "synthetic",
+          object: "chat.completion",
+          created: 1,
+          model: "deepseek-flash",
+          choices: [{ index: 0, message: { role: "assistant", content: JSON.stringify(reply) }, finish_reason: "stop" }],
+          usage: { prompt_tokens: 50, completion_tokens: 30, total_tokens: 80 },
+        });
+      },
+    },
+  );
+  assert.equal(calls, 1);
+  assert.equal(r.status, "confirmed");
+  assert.equal(r.promptVersion, "business-identity-1");
+  assert.deepEqual(r.identity.candidates.map((c) => c.websiteSourceIds), [["s1"]]);
+  assert.deepEqual(r.identity.rejected, ["location_mismatch"]);
+});

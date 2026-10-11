@@ -1,4 +1,5 @@
-import { activePrompts } from "../../prompts/active.js";
+import { activePrompts, type PromptDefinition } from "../../prompts/active.js";
+import { decideIdentity } from "../../domain/identity.js";
 import { promptProvenance } from "../prompt-provenance.js";
 import { z } from "zod";
 import { createDeepSeek } from "@ai-sdk/deepseek";
@@ -19,7 +20,9 @@ import {
   researchInputSchema,
   publicSourceUrl,
   researchOutputSchema,
+  identifyOutputSchema,
   buildLiveReport,
+  type ChosenBusiness,
   type ResearchInput,
   type Evidence,
 } from "../../domain/research.js";
@@ -189,35 +192,41 @@ export async function searchBusiness(
   });
 }
 export const researchSystemPrompt = activePrompts.research.system;
+type StageDiagnostics = Omit<ResearchReportResult, "report"> & {
+  failure: "validation_failed" | "provider_failed";
+  // Which deterministic check rejected the output; never raw model text.
+  check?: string;
+};
 export class ResearchReportFailure extends Error {
-  constructor(
-    readonly diagnostics: Omit<ResearchReportResult, "report"> & {
-      failure: "validation_failed" | "provider_failed";
-      // Which deterministic check rejected the output; never raw model text.
-      check?: string;
-    },
-  ) {
+  constructor(readonly diagnostics: StageDiagnostics) {
     super("research_report_failed");
   }
 }
-export async function generateResearchReport(
-  input: ResearchInput,
-  evidence: Evidence[],
-  id: string,
-  options: {
-    apiKey?: string;
-    model?: string;
-    fetch?: typeof fetch;
-    signal?: AbortSignal;
-  } = {},
+export class ResearchIdentifyFailure extends Error {
+  constructor(readonly diagnostics: StageDiagnostics) {
+    super("research_identify_failed");
+  }
+}
+type ModelOptions = {
+  apiKey?: string;
+  model?: string;
+  fetch?: typeof fetch;
+  signal?: AbortSignal;
+};
+// One bounded structured call shared by the identify and report stages: no SDK
+// retry, a fixed deadline, safe diagnostics and provenance on success or failure.
+async function structuredCall<S extends z.ZodType, R>(
+  definition: PromptDefinition,
+  schema: S,
+  prompt: string,
+  options: ModelOptions,
+  build: (output: z.infer<S>) => R,
+  fail: (d: StageDiagnostics) => Error,
 ) {
   const apiKey = options.apiKey ?? process.env.DEEPSEEK_API_KEY,
     model = options.model ?? process.env.DEEPSEEK_MODEL;
   if (!apiKey || !model) throw new Error("model_configuration_missing");
-  if (!evidence.length || evidence.length > 8)
-    throw new Error("research_sources_missing");
   const start = Date.now();
-  const prompt = JSON.stringify({ input, evidence });
   let usage = {
       inputTokens: null as number | null,
       outputTokens: null as number | null,
@@ -234,20 +243,17 @@ export async function generateResearchReport(
   };
   const diagnostics = () => ({
     model,
-    promptVersion: reportPromptVersion,
+    promptVersion: definition.version,
     attempts: 1,
     durationMs: Date.now() - start,
     usage,
     provenance: {
-      ...promptProvenance(
-        activePrompts.research,
-        z.toJSONSchema(researchOutputSchema),
-      ),
+      ...promptProvenance(definition, z.toJSONSchema(schema)),
       requestHash: snapshotHash({
-        system: researchSystemPrompt,
+        system: definition.system,
         prompt,
-        config: activePrompts.research.config,
-        schemaHash: snapshotHash(z.toJSONSchema(researchOutputSchema)),
+        config: definition.config,
+        schemaHash: snapshotHash(z.toJSONSchema(schema)),
       }),
       actualModel,
       recordedAt: new Date().toISOString(),
@@ -262,13 +268,13 @@ export async function generateResearchReport(
   try {
     const result = await generateText({
       model: provider(model),
-      system: researchSystemPrompt,
+      system: definition.system,
       prompt,
-      output: Output.object({ schema: researchOutputSchema }),
+      output: Output.object({ schema }),
       maxRetries: 0,
-      maxOutputTokens: activePrompts.research.config.maxOutputTokens,
+      maxOutputTokens: definition.config.maxOutputTokens,
       abortSignal: AbortSignal.any([
-        AbortSignal.timeout(activePrompts.research.config.deadlineMs),
+        AbortSignal.timeout(definition.config.deadlineMs),
         ...(options.signal ? [options.signal] : []),
       ]),
       providerOptions: { deepseek: { thinking: { type: "disabled" } } },
@@ -276,25 +282,62 @@ export async function generateResearchReport(
     generated = true;
     retainUsage(result.usage);
     actualModel = result.response.modelId;
-    return {
-      ...diagnostics(),
-      report: buildLiveReport(input, evidence, result.output, id),
-    };
+    return { ...diagnostics(), value: build(result.output as z.infer<S>) };
   } catch (error) {
     if (NoObjectGeneratedError.isInstance(error)) {
       retainUsage(error.usage);
       generated = true;
     }
     const check =
-      error instanceof Error && /^research_unsupported\w*$/.test(error.message)
+      error instanceof Error && /^research_(unsupported|choice)\w*$/.test(error.message)
         ? error.message
         : NoObjectGeneratedError.isInstance(error)
           ? "output_schema"
           : undefined;
-    throw new ResearchReportFailure({
+    throw fail({
       ...diagnostics(),
       failure: generated ? "validation_failed" : "provider_failed",
       ...(check ? { check } : {}),
     });
   }
+}
+const boundedEvidence = (evidence: Evidence[]) => {
+  if (!evidence.length || evidence.length > 8)
+    throw new Error("research_sources_missing");
+};
+// Identify stage: which businesses match, with evidence code verifies.
+export async function identifyBusiness(
+  input: ResearchInput,
+  evidence: Evidence[],
+  options: ModelOptions = {},
+) {
+  boundedEvidence(evidence);
+  const { value, ...diagnostics } = await structuredCall(
+    activePrompts.identify,
+    identifyOutputSchema,
+    JSON.stringify({ input, evidence }),
+    options,
+    (output) => decideIdentity(output, input, evidence),
+    (d) => new ResearchIdentifyFailure(d),
+  );
+  return { ...diagnostics, ...value };
+}
+// Report stage: findings about the operator-chosen business, from its sources only.
+export async function generateResearchReport(
+  input: ResearchInput,
+  evidence: Evidence[],
+  id: string,
+  chosen: ChosenBusiness,
+  options: ModelOptions = {},
+) {
+  boundedEvidence(evidence);
+  const { value, ...diagnostics } = await structuredCall(
+    activePrompts.research,
+    researchOutputSchema,
+    JSON.stringify({ input, evidence }),
+    options,
+    (output) => buildLiveReport(input, evidence, output, id, chosen),
+    (d) => new ResearchReportFailure(d),
+  );
+  return { ...diagnostics, report: value };
 }

@@ -1,6 +1,11 @@
 import { z } from "zod";
-import { identityOutputSchema, decideIdentity } from "./identity.js";
-import { reportSchema, type ReportV2 } from "./reports.js";
+import { identityOutputSchema, type VerifiedCandidate } from "./identity.js";
+import {
+  reportSchema,
+  operatorWebsiteSchema,
+  type ReportV2,
+  type OperatorWebsite,
+} from "./reports.js";
 export function publicSourceUrl(value: string): string | null {
   try {
     const u = new URL(value);
@@ -41,11 +46,25 @@ export const researchInputSchema = z
   })
   .strict();
 export type ResearchInput = z.infer<typeof researchInputSchema>;
+// The identify stage's model output: candidates only (business-identity-1).
+export const identifyOutputSchema = identityOutputSchema;
+// The operator's single decision after identify: which candidate, and the website.
+export const operatorChoiceSchema = z
+  .object({
+    candidate: z.number().int().min(0).max(2),
+    website: operatorWebsiteSchema,
+  })
+  .strict()
+  .refine(
+    (c) => c.website.kind !== "typed" || !!publicSourceUrl(c.website.url),
+    "invalid_public_url",
+  );
+export type OperatorChoice = z.infer<typeof operatorChoiceSchema>;
+export type ChosenBusiness = { candidate: VerifiedCandidate; website: OperatorWebsite };
 export type Evidence = ReportV2["evidence"][number];
 const text = z.string().min(1).max(600);
 export const researchOutputSchema = z
   .object({
-    identity: identityOutputSchema,
     summary: text,
     findings: z
       .array(
@@ -84,11 +103,14 @@ export function splitEvidence<E extends { id: string }>(report: {
     other: report.evidence.filter((e) => !used.has(e.id)),
   };
 }
+// The report covers only the operator-chosen business's sources. Identity and the
+// website are the operator's facts, recorded by code; the model asserts neither.
 export function buildLiveReport(
   input: ResearchInput,
   evidence: Evidence[],
   raw: unknown,
   id: string,
+  chosen: ChosenBusiness,
 ): ReportV2 {
   input = researchInputSchema.parse(input);
   const out = researchOutputSchema.parse(raw);
@@ -130,23 +152,9 @@ export function buildLiveReport(
     out.findings.length -
     findings.length +
     out.actions.filter((a) => forbidden(a.text)).length;
-  const { status: identityStatus, identity } = decideIdentity(
-    out.identity,
-    input,
-    evidence,
-  );
-  // The website is present only when the matched business has a source on the
-  // website the user supplied.
-  const siteHost = input.website
-    ? new URL(input.website).hostname.replace(/^www\./, "")
-    : null;
-  const matched = evidence.filter(
-    (e) =>
-      siteHost &&
-      e.url &&
-      identity.matchedSourceIds.includes(e.id) &&
-      new URL(e.url).hostname.replace(/^www\./, "") === siteHost,
-  );
+  const website = chosen.website;
+  if (website.kind === "selected" && !known.has(website.sourceId))
+    throw new Error("research_choice_invalid");
   const unknown = () => ({ status: "unknown" as const, evidenceIds: [] });
   return reportSchema.parse({
     id,
@@ -154,13 +162,23 @@ export function buildLiveReport(
     mode: "live",
     businessName: input.businessName,
     summary: out.summary,
-    identityStatus,
-    identity,
+    identityStatus: "confirmed",
+    identity: {
+      reason: "Chosen by the operator from the verified candidates.",
+      matchedSourceIds: chosen.candidate.sourceIds.filter((s) => known.has(s)),
+      candidates: [chosen.candidate],
+      rejected: [],
+      chosenBy: "operator",
+      website,
+    },
     goals: [],
     capabilities: {
-      website: matched.length
-        ? { status: "present", evidenceIds: matched.map((e) => e.id) }
-        : unknown(),
+      website:
+        website.kind === "selected"
+          ? { status: "present", evidenceIds: [website.sourceId], confirmedBy: "operator" }
+          : website.kind === "typed"
+            ? { status: "present", evidenceIds: [], confirmedBy: "operator" }
+            : { status: "absent", evidenceIds: [], confirmedBy: "operator" },
       profile: unknown(),
       campaign: unknown(),
     },
@@ -172,13 +190,6 @@ export function buildLiveReport(
       ...(removed
         ? [
             `${removed} ${removed === 1 ? "statement was" : "statements were"} removed because the sources did not support ${removed === 1 ? "it" : "them"}.`,
-          ]
-        : []),
-      ...(identityStatus === "ambiguous"
-        ? [
-            identity.candidates.length > 1
-              ? "Several businesses match this name and location; confirm which one before recommending services."
-              : "No source clearly ties this business name to the location or website supplied; confirm them before recommending services.",
           ]
         : []),
       "Public search does not establish account ownership, advertising budget, analytics or Search Console status.",

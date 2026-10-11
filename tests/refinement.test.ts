@@ -122,11 +122,13 @@ test("extracted active prompts preserve exact shipped text and record operationa
   const { definition: researchV2 } =
     await import("../src/prompts/research-report/v2.js");
   const hash = (s: string) => createHash("sha256").update(s).digest("hex");
-  // research-report-2 stays byte-identical for replay; research-report-5 is active.
-  assert.equal(activePrompts.research.version, "research-report-5");
-  // Identity is returned as quoted evidence; same-name businesses elsewhere are unrelated.
-  assert.match(activePrompts.research.system, /name quote copied exactly/i);
-  assert.match(activePrompts.research.system, /other locations are unrelated/i);
+  // research-report-2 stays byte-identical for replay; research-report-6 is active.
+  // Identity is its own stage; the report covers only the operator-chosen business.
+  assert.equal(activePrompts.identify.version, "business-identity-1");
+  assert.match(activePrompts.identify.system, /name quote copied exactly/i);
+  assert.match(activePrompts.identify.system, /other locations are unrelated/i);
+  assert.equal(activePrompts.research.version, "research-report-6");
+  assert.doesNotMatch(activePrompts.research.system, /candidates/i);
   assert.equal(
     hash(researchV2.system),
     "aa80bde27622f20ab4b0e61c80e2670596a022a8fa8f37fd8492c5076a84fe9d",
@@ -225,17 +227,6 @@ test("research report failures retain safe usage/provenance without leaking raw 
           message: {
             role: "assistant",
             content: JSON.stringify({
-              identity: {
-                status: "confirmed",
-                reason: "One listing names the studio in Stockholm.",
-                candidates: [
-                  {
-                    sourceIds: ["s1"],
-                    name: { sourceId: "s1", text: "Juniper Ceramics" },
-                    location: { sourceId: "s1", text: "Stockholm" },
-                  },
-                ],
-              },
               summary: "Juniper has no website.",
               findings: [],
               actions: [],
@@ -249,6 +240,13 @@ test("research report failures retain safe usage/provenance without leaking raw 
     });
   await assert.rejects(
     generateResearchReport(input, evidence, "live-test", {
+        candidate: {
+          sourceIds: ["s1"],
+          name: { sourceId: "s1", text: "Juniper" },
+          location: { sourceId: "s1", text: "Stockholm" },
+        },
+        website: { kind: "none" as const },
+      }, {
       apiKey: "synthetic",
       model: "deepseek-flash",
       fetch: transport,
@@ -263,6 +261,13 @@ test("research report failures retain safe usage/provenance without leaking raw 
   );
   await assert.rejects(
     generateResearchReport(input, evidence, "live-test", {
+        candidate: {
+          sourceIds: ["s1"],
+          name: { sourceId: "s1", text: "Juniper" },
+          location: { sourceId: "s1", text: "Stockholm" },
+        },
+        website: { kind: "none" as const },
+      }, {
       apiKey: "synthetic",
       model: "deepseek-flash",
       fetch: async () => {

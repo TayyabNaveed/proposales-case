@@ -5,6 +5,7 @@ import {
   searchResultSchema,
   reportResultSchema,
   reportDiagnosticsSchema,
+  identifyResultSchema,
 } from "../domain/research-state.js";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -14,20 +15,26 @@ import { dailyLimit } from "./limits.js";
 import {
   researchInputSchema,
   researchOutputSchema,
+  identifyOutputSchema,
+  operatorChoiceSchema,
   type ResearchInput,
+  type OperatorChoice,
 } from "../domain/research.js";
 import { reportSchema, type ReportV2 } from "../domain/reports.js";
 import {
   searchBusiness,
   generateResearchReport,
+  identifyBusiness,
+  ResearchIdentifyFailure,
   searchVersion,
   reportPromptVersion,
   type SearchResult,
   ResearchReportFailure,
 } from "./providers/research.js";
+type Stage = "search" | "identify" | "report";
 export type ResearchRecord = {
   id: string;
-  stage: "search" | "report";
+  stage: Stage;
   inputHash: string;
   accessScope: string;
   input: unknown;
@@ -50,7 +57,7 @@ const record = (r: Record<string, unknown>, cacheHit = false): ResearchRecord =>
 export function createResearchStore(
   pool: pg.Pool,
   schema = "case_workflow",
-  limitFor: (stage: "search" | "report") => number | null = dailyLimit,
+  limitFor: (stage: Stage) => number | null = dailyLimit,
 ) {
   if (!/^(case_workflow|case_test_[a-f0-9]+)$/.test(schema))
     throw new Error("invalid_schema");
@@ -59,7 +66,7 @@ export function createResearchStore(
     budgets = `"${schema}".research_budgets`;
   return {
     async admit(a: {
-      stage: "search" | "report";
+      stage: Stage;
       identity: unknown;
       input: unknown;
       scope: string;
@@ -152,6 +159,7 @@ export function createResearchStore(
         "research_search_partial",
         "research_search_failed",
         "research_report_failed",
+        "research_identify_failed",
         "research_sources_missing",
       ];
       const code =
@@ -185,7 +193,11 @@ export function createResearchService(
     modelFetch?: typeof fetch;
   },
 ) {
-  function fresh(r: ResearchRecord, stage: "search" | "report") {
+  function modelConfigured() {
+    if (!(options.apiKey ?? process.env.DEEPSEEK_API_KEY) || !options.model)
+      throw new Error("model_configuration_missing");
+  }
+  function fresh(r: ResearchRecord, stage: Stage) {
     if (
       r.stage !== stage ||
       r.state !== "ready" ||
@@ -230,23 +242,21 @@ export function createResearchService(
         result.state === "partial" ? "research_search_partial" : undefined,
       );
     },
-    async report(searchId: string, scope: string, refresh = false) {
+    async identify(searchId: string, scope: string, refresh = false) {
       const search = await store.get(searchId, scope);
       fresh(search, "search");
       const data = searchResultSchema.parse(search.result);
       if (!data.evidence.length) throw new Error("research_sources_missing");
-      if (!(options.apiKey ?? process.env.DEEPSEEK_API_KEY) || !options.model)
-        throw new Error("model_configuration_missing");
+      modelConfigured();
       const a = await store.admit({
-        stage: "report",
+        stage: "identify",
         identity: {
           input: data.input,
           evidence: data.evidence,
           searchVersion,
-          reportPromptVersion,
           provenance: promptProvenance(
-            activePrompts.research,
-            z.toJSONSchema(researchOutputSchema),
+            activePrompts.identify,
+            z.toJSONSchema(identifyOutputSchema),
           ),
           model: options.model,
         },
@@ -255,12 +265,82 @@ export function createResearchService(
         refresh,
       });
       if (!a.claimed) return a.record;
+      try {
+        const result = await identifyBusiness(data.input, data.evidence, {
+          apiKey: options.apiKey,
+          model: options.model,
+          fetch: options.modelFetch,
+        });
+        return store.finish(a.record.id, scope, "ready", result);
+      } catch (error) {
+        return store.finish(
+          a.record.id,
+          scope,
+          "failed",
+          error instanceof ResearchIdentifyFailure
+            ? { diagnostics: error.diagnostics }
+            : null,
+          "research_identify_failed",
+        );
+      }
+    },
+    // The operator's choice selects one verified candidate and states the website.
+    // Only that candidate's sources reach the report model.
+    async report(
+      searchId: string,
+      identifyId: string,
+      rawChoice: OperatorChoice,
+      scope: string,
+      refresh = false,
+    ) {
+      const choice = operatorChoiceSchema.parse(rawChoice);
+      const search = await store.get(searchId, scope),
+        identified = await store.get(identifyId, scope);
+      fresh(search, "search");
+      fresh(identified, "identify");
+      if ((identified.input as { searchId?: string }).searchId !== searchId)
+        throw new Error("research_choice_invalid");
+      const data = searchResultSchema.parse(search.result);
+      const candidate = identifyResultSchema.parse(identified.result).identity
+        .candidates[choice.candidate];
+      if (
+        !candidate ||
+        (choice.website.kind === "selected" &&
+          !(candidate.websiteSourceIds ?? []).includes(choice.website.sourceId))
+      )
+        throw new Error("research_choice_invalid");
+      const evidence = data.evidence.filter((e) =>
+        candidate.sourceIds.includes(e.id),
+      );
+      if (!evidence.length) throw new Error("research_sources_missing");
+      modelConfigured();
+      const chosen = { candidate, website: choice.website };
+      const a = await store.admit({
+        stage: "report",
+        identity: {
+          input: data.input,
+          evidence,
+          chosen,
+          searchVersion,
+          reportPromptVersion,
+          provenance: promptProvenance(
+            activePrompts.research,
+            z.toJSONSchema(researchOutputSchema),
+          ),
+          model: options.model,
+        },
+        input: { searchId, identifyId, choice },
+        scope,
+        refresh,
+      });
+      if (!a.claimed) return a.record;
       let result: Awaited<ReturnType<typeof generateResearchReport>>;
       try {
         result = await generateResearchReport(
           data.input,
-          data.evidence,
+          evidence,
           "live-" + a.record.id,
+          chosen,
           {
             apiKey: options.apiKey,
             model: options.model,
@@ -304,6 +384,17 @@ export function publicResearch(r: ResearchRecord) {
     return publicResearchSchema.parse({
       ...common,
       result: r.result === null ? null : searchResultSchema.parse(r.result),
+    });
+  if (r.stage === "identify")
+    return publicResearchSchema.parse({
+      ...common,
+      result: r.state === "ready" ? identifyResultSchema.parse(r.result) : null,
+      diagnostics:
+        r.state === "failed" && r.result !== null
+          ? reportDiagnosticsSchema.parse(
+              (r.result as { diagnostics: unknown }).diagnostics,
+            )
+          : null,
     });
   const failed =
     r.state === "failed" && r.result !== null

@@ -42,6 +42,10 @@ test("research/report routes authorise, validate and bound before paid work; sco
           cacheHit: false,
         } as any;
       },
+      identify: async () => {
+        calls++;
+        return {} as any;
+      },
       report: async () => {
         calls++;
         return {} as any;
@@ -107,6 +111,35 @@ test("research/report routes authorise, validate and bound before paid work; sco
       .status,
     400,
   );
+  const ids = {
+    searchId: "17118dfa-57c6-4d6d-8c19-c615c34dd9f1",
+    identifyId: "27118dfa-57c6-4d6d-8c19-c615c34dd9f1",
+  };
+  assert.equal(
+    (await handlers.identifyPOST(req("/api/identify", { searchId: ids.searchId }, false))).status,
+    401,
+  );
+  // The report needs the operator's choice; a typed website must be a public URL.
+  assert.equal((await handlers.reportPOST(req("/api/reports", ids))).status, 400);
+  assert.equal(
+    (
+      await handlers.reportPOST(
+        req("/api/reports", {
+          ...ids,
+          choice: { candidate: 0, website: { kind: "typed", url: "http://127.0.0.1/admin" } },
+        }),
+      )
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await handlers.reportPOST(
+        req("/api/reports", { ...ids, choice: { candidate: 3, website: { kind: "none" } } }),
+      )
+    ).status,
+    400,
+  );
   assert.equal(calls, 0);
   assert.equal(
     (
@@ -132,6 +165,9 @@ test("research/report routes authorise, validate and bound before paid work; sco
     {
       consume: async () => false,
       search: async () => {
+        throw Error("dispatch");
+      },
+      identify: async () => {
         throw Error("dispatch");
       },
       report: async () => {

@@ -10,6 +10,8 @@ export type IdentityCase = {
   // For confirmed cases: sources that must be matched, and ones that must not be.
   mustMatch?: string[];
   mustNotMatch?: string[];
+  // Sources of which at least one should be suggested as the business's own site.
+  websiteAny?: string[];
 };
 const retrievedAt = "2026-10-10T12:00:00.000Z";
 const source = (id: string, label: string, excerpt: string, url: string) => ({
@@ -126,6 +128,7 @@ export const identityCases: IdentityCase[] = [
     ],
     expected: "confirmed",
     mustMatch: ["s1"],
+    websiteAny: ["s1"],
   },
   {
     id: "injected-identity",

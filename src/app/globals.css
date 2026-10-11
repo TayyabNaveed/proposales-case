@@ -760,3 +760,70 @@ h1 {
   padding-left: 18px;
   overflow-wrap: anywhere;
 }
+.choice-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px;
+  background: var(--paper);
+  color: var(--ink);
+}
+.choice-dialog::backdrop {
+  background: rgb(24 61 54 / 0.35);
+}
+.choice-dialog h2 {
+  margin: 0 0 6px;
+}
+.choice-dialog fieldset {
+  border: 0;
+  padding: 0;
+  margin: 18px 0 0;
+  display: grid;
+  gap: 8px;
+}
+.choice-dialog legend {
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+.choice-option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.choice-option:has(input:checked) {
+  border-color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.choice-option input {
+  margin-top: 5px;
+}
+.choice-option small {
+  display: block;
+  color: var(--muted);
+}
+.choice-typed {
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+.choice-typed input {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: white;
+}
+.choice-dialog small.error {
+  color: #9b2c2c;
+}
+.choice-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}

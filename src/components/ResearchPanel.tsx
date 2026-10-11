@@ -1,15 +1,16 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { researchInputSchema } from "../domain/research";
+import { researchInputSchema, type OperatorChoice } from "../domain/research";
 import {
   publicResearchSchema,
   type SearchStage,
+  type IdentifyStage,
   type ReportStage,
-  type PublicResearchRecord,
 } from "../domain/research-state";
-import { analyseBusiness } from "../domain/analysis-flow";
+import { identifyStep, continueWithChoice } from "../domain/analysis-flow";
 import type { ReportV2 } from "../domain/reports";
 import { apiRequest, friendlyDate, explanations } from "./workbench/api";
+import { BusinessChoice } from "./workbench/BusinessChoice";
 export function ResearchPanel({
   authenticated,
   blocked,
@@ -35,8 +36,9 @@ export function ResearchPanel({
 }) {
   const [businessName, setName] = useState(""),
     [location, setLocation] = useState(""),
-    [website, setWebsite] = useState(""),
     [search, setSearch] = useState<SearchStage | null>(null),
+    [identify, setIdentify] = useState<IdentifyStage | null>(null),
+    [choosing, setChoosing] = useState(false),
     [report, setReport] = useState<ReportStage | null>(null),
     [busy, setBusy] = useState(""),
     [message, setMessage] = useState(""),
@@ -76,7 +78,17 @@ export function ResearchPanel({
         setSearch(s);
         setName(s.input.businessName);
         setLocation(s.input.location);
-        setWebsite(s.input.website ?? "");
+        const iid = localStorage.getItem("case-research-identify");
+        if (!iid) return;
+        const i = await request("/api/identify?id=" + encodeURIComponent(iid));
+        if (
+          cancelled ||
+          rev !== revision.current ||
+          i.stage !== "identify" ||
+          i.input.searchId !== s.id
+        )
+          return;
+        setIdentify(i);
         const rid = localStorage.getItem("case-research-report");
         if (rid) {
           const r = await request("/api/reports?id=" + encodeURIComponent(rid));
@@ -84,7 +96,7 @@ export function ResearchPanel({
             cancelled ||
             rev !== revision.current ||
             r.stage !== "report" ||
-            r.input.searchId !== s.id
+            r.input.identifyId !== i.id
           )
             return;
           setReport(r);
@@ -109,31 +121,33 @@ export function ResearchPanel({
     revision.current++;
     set(value);
     setSearch(null);
+    setIdentify(null);
     setReport(null);
     setMessage("");
     onReset();
     try {
       localStorage.removeItem("case-research-search");
+      localStorage.removeItem("case-research-identify");
       localStorage.removeItem("case-research-report");
     } catch {}
   }
+  // Step 1: sources and candidate businesses, then the operator's choice.
   async function analyse(refresh = false) {
     if (active.current || blocked || restoring) return;
+    if (!refresh && identify?.result && search && !report?.result) {
+      setChoosing(true);
+      return;
+    }
     const rev = revision.current;
     active.current = true;
     setMessage("");
-    let analysed: ReportV2 | null = null;
     try {
-      const input = researchInputSchema.parse({
-        businessName,
-        location,
-        website: website || undefined,
-      });
+      const input = researchInputSchema.parse({ businessName, location });
       if (refresh) onReset();
-      await analyseBusiness({
+      await identifyStep({
         input,
         search: refresh ? null : search,
-        report: refresh ? null : report,
+        identify: refresh ? null : identify,
         request: (path, body) =>
           request(
             path,
@@ -144,36 +158,60 @@ export function ResearchPanel({
         isCurrent: () => revision.current === rev,
         onSearch: (s) => {
           setSearch(s);
+          setIdentify(null);
           setReport(null);
           save("case-research-search", s.id);
           try {
+            localStorage.removeItem("case-research-identify");
             localStorage.removeItem("case-research-report");
           } catch {}
         },
-        onSavedReport: (r) => {
-          setReport(r);
-          save("case-research-report", r.id);
-        },
-        onReport: (r: ReportV2) => {
-          analysed = r;
-          onReport(r);
+        onIdentify: (i) => {
+          setIdentify(i);
+          save("case-research-identify", i.id);
+          setChoosing(true);
         },
         onProgress: setBusy,
-        recommend: onRecommend,
-      } as Parameters<typeof analyseBusiness>[0]);
-      if (revision.current === rev)
-        setMessage(
-          (analysed as ReportV2 | null)?.identityStatus === "ambiguous"
-            ? "We couldn’t confirm this business from public sources, so no services are suggested. Add its website or exact street address and analyse again."
-            : "Analysis complete. Review the suggested scope below.",
-        );
+      });
     } catch (e) {
       if (revision.current === rev)
         setMessage(
           e instanceof Error && e.name === "ZodError"
-            ? "Check the business name, location and website."
+            ? "Check the business name and location."
             : (e as Error).message,
         );
+    } finally {
+      active.current = false;
+      if (revision.current === rev) setBusy("");
+    }
+  }
+  // Step 2: report on the chosen business, then service suggestions.
+  async function choose(choice: OperatorChoice) {
+    if (active.current || !search || !identify) return;
+    setChoosing(false);
+    const rev = revision.current;
+    active.current = true;
+    setMessage("");
+    try {
+      await continueWithChoice({
+        search,
+        identify,
+        choice,
+        report,
+        request,
+        isCurrent: () => revision.current === rev,
+        onSavedReport: (r) => {
+          setReport(r);
+          save("case-research-report", r.id);
+        },
+        onReport,
+        onProgress: setBusy,
+        recommend: onRecommend,
+      });
+      if (revision.current === rev)
+        setMessage("Analysis complete. Review the suggested services below.");
+    } catch (e) {
+      if (revision.current === rev) setMessage((e as Error).message);
     } finally {
       active.current = false;
       if (revision.current === rev) setBusy("");
@@ -189,6 +227,11 @@ export function ResearchPanel({
         const s = await request("/api/research?id=" + search.id);
         if (rev !== revision.current) return;
         if (s.stage === "search") setSearch(s);
+      }
+      if (identify) {
+        const i = await request("/api/identify?id=" + identify.id);
+        if (rev !== revision.current) return;
+        if (i.stage === "identify") setIdentify(i);
       }
       if (report) {
         const r = await request("/api/reports?id=" + report.id);
@@ -243,25 +286,14 @@ export function ResearchPanel({
               placeholder="City or area"
             />
           </label>
-          <label>
-            Website <small>(optional)</small>
-            <input
-              type="url"
-              maxLength={300}
-              disabled={disabled}
-              value={website}
-              onChange={(e) => edit(setWebsite, e.target.value)}
-              placeholder="https://"
-            />
-          </label>
         </div>
         <div className="research-actions">
           <button className="primary" disabled={disabled}>
-            {search
-              ? message
+            {identify?.result && !report?.result
+              ? "Choose the business"
+              : search && message
                 ? "Continue analysis"
-                : "Analyse business"
-              : "Analyse business"}
+                : "Analyse business"}
           </button>
           {(search || report) && (
             <button
@@ -317,14 +349,36 @@ export function ResearchPanel({
           ))}
         </details>
       )}
+      {choosing && identify?.result && search?.result && (
+        <BusinessChoice
+          businessName={businessName}
+          identify={identify}
+          evidence={search.result.evidence}
+          onConfirm={(c) => void choose(c)}
+          onCancel={() => {
+            setChoosing(false);
+            setMessage("Choose the business to continue.");
+          }}
+        />
+      )}
       {(search || report) && (
         <details className="technical">
           <summary>Analysis details</summary>
           <p>
             Sources: {search?.state ?? "not started"} ·{" "}
-            {search?.cacheHit ? "reused" : "saved"}. Report:{" "}
+            {search?.cacheHit ? "reused" : "saved"}. Business:{" "}
+            {identify?.state ?? "not started"}. Report:{" "}
             {report?.state ?? "not started"}.
           </p>
+          {identify?.result && (
+            <p>
+              {identify.result.model} · {identify.result.promptVersion} ·{" "}
+              {identify.result.identity.candidates.length} verified candidate(s)
+              {identify.result.identity.rejected.length
+                ? ` · ${identify.result.identity.rejected.length} removed (${identify.result.identity.rejected.join(", ")})`
+                : ""}
+            </p>
+          )}
           {search?.result && (
             <p>
               {search.result.attempts} attempts ·{" "}
