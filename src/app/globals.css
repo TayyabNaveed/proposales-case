@@ -184,15 +184,29 @@ h3 {
   max-width: 720px;
 }
 .landing-intro h1 {
-  font-size: clamp(36px, 5vw, 54px);
-  letter-spacing: -1.5px;
-  line-height: 1.1;
-  margin-bottom: 18px;
+  font-size: clamp(28px, 3.6vw, 40px);
+  letter-spacing: -0.5px;
+  line-height: 1.25;
+  margin: 0;
 }
-.lede {
-  font-size: 18px;
+.landing-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.partners {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
   color: var(--muted);
   margin: 0;
+}
+.sidebar .partners {
+  padding: 6px 8px 0;
+  font-size: 11px;
 }
 .steps {
   list-style: none;

@@ -1,89 +1,91 @@
-# Report to reviewed proposal
+# Fieldwork — from a business name to a proposal you can send
 
-A focused proof of concept: turn a sourced business report into an evidence-backed service recommendation, review its scope and price, and create an unsent Proposales draft.
+Fieldwork is a small tool for a digital agency (here, Metascalers) built on the Proposales API. An operator enters a business name and place. Fieldwork researches the business from public sources, suggests services from the agency's catalogue with the evidence behind each one, and creates an unsent draft proposal in Proposales. A person reviews and sends it there.
 
-**Status — 10 October 2026:** The core through Phase5 and the A–D product refinement are implemented locally. Research is the default journey, with deliberate analysis progressing across separately protected source/report/selection APIs. Two fictional examples teach the same flow. One human review/edit happens in Proposales before manual sending. Final refinement verification is recorded in [QUALITY-REFINEMENT](docs/QUALITY-REFINEMENT.md); deployment remains pending.
+**Live:** https://proposales-case.vercel.app (access code supplied with the submission)
 
-- [How this project is built](docs/WORKFLOW.md)
-- [Current spec: guided proposal flow](docs/specs/2026-10-11-guided-proposal-flow.md)
-- [Technical design and scope](docs/ARCHITECTURE.md)
-- [Current implementation plan: AI service selection and real drafts](docs/superpowers/plans/2026-10-09-ai-service-proposals.md)
-- [Phase 2 API verification and operator commands](docs/PHASE-2.md)
-- [Category composition and staged activation](docs/PROPOSAL-CATEGORIES.md)
-- [Phase 3 recommendation evidence and operator commands](docs/PHASE-3.md)
-- [Evaluation explanations and limits](evals/REVIEW.md)
-- [Phase 0 verification results](docs/PHASE-0.md)
-- [Phase 0 implementation plan](docs/superpowers/plans/2026-10-09-phase-zero.md)
+## Try it
 
-Live research and the example-report → AI recommendation → real draft path are implemented. Examples are explicitly fictional; live results retain sources, timestamps and uncertainty. Read the current architecture and prompt documentation before using historical implementation plans.
+1. Open the app and enter the access code. Without it, the two fictional examples are still viewable.
+2. **New research:** enter a business name and place, in any country. Confirm which business the sources describe and its website; the report and suggested services follow, each tied to its sources.
+3. **Adjust the scope:** keep, remove or add services, change quantities, or make a service optional. The bar at the bottom shows the totals.
+4. **Create proposal:** review the drafted introduction and, optionally, add a recipient. This creates an unsent draft in Proposales; nothing is emailed.
+5. **Proposals:** each proposal's status is read live from Proposales (draft, sent, accepted…). An accepted proposal links to its PDF. Sending happens in Proposales; the editor links need the Metascalers account.
 
-Selected stack: Next.js/TypeScript, Vercel AI SDK with DeepSeek, Tavily, Supabase Postgres and Proposales, hosted on Vercel. AI suggests and explains; code validates service choices and calculates prices; a person reviews the actual unsent draft in Proposales before manually sending. Authorised access permits generation and is separate from commercial approval.
+## How it works
 
-## Local configuration
+```
+name + place ──► Tavily search ──► identify (AI quotes, code verifies) ──► operator confirms business + website
+                                                                                     │
+Proposales draft ◄── code builds + verifies ◄── operator adjusts ◄── AI selects ◄── AI report (cited sources)
+       │                (prices, totals)            scope             services
+       └──► operator reviews and sends in Proposales; status read back into Fieldwork
+```
 
-Copy `.env.example` to `.env.local` **only if the local file does not already exist**, then configure server-only credentials. Never commit the local file or put these values in `NEXT_PUBLIC_*` variables.
+The split of responsibilities is the core idea:
+
+- **AI suggests and explains.** It identifies the business with quotes from the sources, writes a report, picks services from a fixed catalogue and drafts an introduction. Every model output is schema-validated, and claims must point at sources.
+- **Code decides what is allowed.** It verifies the AI's quotes against the sources (in any language), rejects services that are not in the catalogue or whose prerequisites are missing, and calculates every price and total in integer cents. The model never sets a price.
+- **A person approves.** The operator confirms the business, adjusts the scope, and reviews the actual draft in Proposales before sending. Fieldwork never sends.
+
+## Design decisions worth knowing
+
+- **One write, verified.** Creating a Proposales draft is an external write with no idempotency key. Each creation is admitted once in Postgres under a deterministic key. If the response is lost, the outcome is recorded as unknown and reconciled by searching Proposales for the key; it is never blindly retried. After creation, the draft is read back and compared field by field with what was sent.
+- **Saved snapshots are immutable.** What was proposed (scope, prices, report, layout version, pinned image and cover IDs) is saved before the write and hashed. Changing the layout creates a new composition version (`proposal-2` … `proposal-5`); existing proposals keep their exact payload.
+- **Postgres as cache, admission and audit log.** Paid stages (search, identify, report, selection) are keyed by a hash of their inputs. The same row deduplicates concurrent requests, caches the result for 24 hours and records inputs, versions, usage and failures.
+- **Provider failures name their cause.** Tavily, DeepSeek and Proposales errors are mapped to safe codes ("search credits used up", "AI balance empty"), and the screen says what to do.
+- **The proposal reads like a proposal.** Services are grouped by category, monthly services share one section, and the introduction states the one-time and monthly investment, because Proposales adds them into one total. The cover comes from the agency's Proposales template.
+
+More in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), the decision history in [docs/IMPLEMENTATION-LOG.md](docs/IMPLEMENTATION-LOG.md), and known limits and next steps in [docs/SYSTEM-DESIGN.md](docs/SYSTEM-DESIGN.md).
+
+## Stack
+
+Next.js 16 (App Router) and TypeScript on Vercel; Vercel AI SDK with DeepSeek; Tavily for search; Supabase Postgres through the transaction pooler; the Proposales REST API.
+
+## Run locally
+
+Use Node 24 (`.nvmrc`). Copy `.env.example` to `.env.local` if it does not exist, and fill in the server-only values:
 
 | Variable | Purpose |
 |---|---|
-| `PROPOSALES_API_KEY` | Server-side Proposales access |
-| `PROPOSALES_COMPANY_ID` | Company scope selected after listing accessible companies |
-| `DEEPSEEK_API_KEY` | Direct DeepSeek access through AI SDK |
-| `DEEPSEEK_MODEL` | Exact model selected after account/output compatibility checks |
-| `TAVILY_API_KEY` | Live research; not required for synthetic examples |
-| `DATABASE_URL` | Dedicated Supabase transaction-pooler Postgres URI with database password |
-| `DAILY_LIMIT_*` | Optional daily caps per stage; none by default (see `.env.example` and `src/server/limits.ts`). |
-
-The SQL connection does not use a Supabase publishable/anon API key. Browser database access is not planned. Use Node 24 (see `.nvmrc`). The connection requires the Supabase CA certificate through `DATABASE_CA_PATH` (local file, defaults to `prod-ca-2021.crt`) or `DATABASE_CA_PEM` (hosting environment). TLS verification stays enabled.
-
-This directory is the standalone project boundary. Its eventual repository must contain only reviewed case code, synthetic fixtures and technical documentation. It must run without parent-directory imports, files, credentials or history. No repository remote or deployment has been configured.
-
-## Run the implemented discovery slice
+| `PROPOSALES_API_KEY`, `PROPOSALES_COMPANY_ID` | Proposales access and the company to work in |
+| `PROPOSALES_TEMPLATE_UUID` | Optional: the template whose cover new proposals use |
+| `PROPOSAL_COMPOSITION` | Optional: `proposal-4` or `proposal-3` to opt out of the current layout |
+| `DEEPSEEK_API_KEY`, `DEEPSEEK_MODEL` | Model access through the AI SDK |
+| `TAVILY_API_KEY` | Live research (not needed for the examples) |
+| `DATABASE_URL`, `DATABASE_CA_PATH` or `DATABASE_CA_PEM` | Supabase Postgres, with TLS verification |
+| `APP_ORIGIN`, `REVIEWER_ACCESS_CODE`, `SESSION_SECRET` | Exact browser origin for writes, the demo code, and the session signing key |
+| `DAILY_LIMIT_*` | Optional daily caps per paid stage |
 
 ```sh
 nvm use
 npm ci
-npm test
-npm run typecheck
-npm run probe -- companies
-npm run probe -- content
-npm run probe -- model
+npm run db:migrate      # applies each migration once, recorded in a ledger
+npm run dev             # http://127.0.0.1:3000; set APP_ORIGIN to match
 ```
 
-Unit tests are offline. The model probe makes one bounded, billable provider request using synthetic evidence. Read probes use the configured account; outputs omit credentials and private account payloads.
+New proposals use five category entries in the Proposales content library; [docs/PROPOSAL-CATEGORIES.md](docs/PROPOSAL-CATEGORIES.md) describes the one-time import.
 
-For a dedicated case database, apply the additive migrations with `npm run db:migrate`. `npm run test:db` creates an isolated randomly named test schema, checks concurrent admission/reconnect behaviour, and removes only that schema.
-
-`npm run probe -- draft` deliberately creates **one unsent, recipient-free, description-only discovery draft**. A durable operation key makes repeat runs reuse its result. `npm run probe -- verify-draft` only retrieves/verifies it. Private IDs are saved under ignored `private/`. The command does not create priced content or send email. Unknown/unfinished operation outcomes require reconciliation; do not delete operation rows to force another attempt.
-
-The CLI is an operator tool. The UI uses signed demo sessions and exact-origin checks for AI calls and real account-backed unsent draft creation. **Known limitation:** the hosted app connects with the Supabase project role, like migrations and operator scripts. For a case project that was a deliberate choice. A production setup would give the app its own narrower role. `db/migrations/006_app_role.sql` prepares that role, `case_app`, limited to reading, inserting and updating `case_workflow` rows. It has no effect unless the role is created.
-
-## Current evidence and limits
-
-- Provider contract, write-failure and model-support tests; real database concurrency/reconnect check.
-- Draft retrieval confirms `draft`, no recipient and preserved operation metadata. Filtered search finds it; this does not establish immediate consistency after every write.
-- `deepseek-flash` is an account-supported alias, not an immutable model snapshot. Record evaluation dates and recheck quality when it changes.
-- AI SDK uses schema instructions in a compatibility mode for this provider; runtime schema validation and evidence checks remain required.
-- Priced blocks and synthetic service-selection cases are verified. Live report generation is verified; no deployment, complete factuality evaluation, delivery or webhook integration yet.
-
-
-## Try the local workbench
+## Tests
 
 ```sh
-nvm use
-npm run db:migrate
-npm run dev -- --port 3001
+npm test            # offline unit and contract tests
+npm run typecheck
+npm run test:db     # integration tests in an isolated, randomly named schema, removed afterwards
 ```
 
-Open http://127.0.0.1:3001. `APP_ORIGIN` must exactly match the browser origin. Enter the locally configured `REVIEWER_ACCESS_CODE` to unlock demo actions, then get AI recommendations, tailor supported services and generate a draft. Review the actual proposal in Proposales before manually sending. The code and `SESSION_SECRET` stay server-side in `.env.local`. Public recorded examples require no credentials or provider calls. Sessions last one hour; expired access restores login. Saved uncertain requests retain their UUID across reload and explicit retries. HTTPS cookies are required except for explicit loopback origins.
+Provider calls are faked in the offline tests. AI quality is evaluated separately in [evals/](evals/REVIEW.md).
 
-The local server may already be running on port 3001. Avoid starting a second instance on the same port. For a production build, use `npm run build` then `npm run start -- --port 3001`.
+## Repository map
 
-Login allows five attempts per minute per visitor on Vercel, where the platform sets `x-forwarded-for`, plus a global cap of 30 per minute. Elsewhere forwarding headers are not trusted, and a single global limit of five applies. Visitor addresses are stored only as keyed hashes. This is a single shared demo reviewer identity, not a production multi-user identity system.
-
-`npm run test:db` verifies operation/snapshot/recommendation/asset/access persistence in isolated schemas. `npm run test:http` checks the running local app without model or proposal creation. See [code walkthrough](docs/WALKTHROUGH.md).
-
-## Implemented workflow
-
-Report → AI-selected fixed-price service modules → unsent Proposales draft → one human review/edit in Proposales. Historical approval rows remain preserved; `/api/offers` is retired. Fixed prices are illustrative case rates. Live research reuses this working example path.
-
-For live research, unlock access beside the first action, enter the business name and location, and choose **Analyse business**. A dialog asks you to confirm the business from verified matches and pick, type or skip its website. The report then appears before service suggestions complete. Continue/retry resumes saved stages deliberately; reopening and tab navigation only read saved work. **Create proposal** creates an unsent draft for **Open in Proposales**. Web Locks and browser storage are required for safe local proposal admission. See [current walkthrough](docs/WALKTHROUGH.md), [prompt versions](docs/PROMPTS.md) and [research limits/evidence](docs/PHASE-5.md).
+| Path | What it holds |
+|---|---|
+| `src/app` | Page and API routes |
+| `src/components` | The workbench UI |
+| `src/domain` | Catalogue, pricing, reports, identity checks, proposal grouping (no I/O) |
+| `src/server` | Services, persistence, admission, workflow and access |
+| `src/server/providers` | Proposales, Tavily and DeepSeek clients and the proposal composition |
+| `src/prompts` | Versioned prompt sections |
+| `db/migrations` | Additive SQL migrations |
+| `evals` | AI evaluation cases and results |
+| `docs` | Architecture, decisions and operator notes |

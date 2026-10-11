@@ -31,7 +31,7 @@ const steps: Array<[string, string]> = [
   ],
   [
     "Suggest",
-    "Services from the catalogue are suggested, each tied to evidence. You keep, remove or add services.",
+    "Services from the Metascalers catalogue are suggested, each tied to evidence. You keep, remove or add services.",
   ],
   [
     "Create",
@@ -206,18 +206,18 @@ export function ExampleWorkbench({
     <>
       {showLanding && (
         <main className="landing">
-          <a href="/" className="brand">
-            <span className="mark">f.</span> fieldwork
-          </a>
+          <header className="landing-bar">
+            <a href="/" className="brand">
+              <span className="mark">f.</span> fieldwork
+            </a>
+            <span className="partners">Metascalers × Proposales</span>
+          </header>
           <section className="landing-intro" aria-labelledby="landing-title">
             <h1 id="landing-title">
-              From a business name to a proposal you can send.
+              Fieldwork researches a business from public sources, suggests
+              services from the Metascalers catalogue, and creates a draft
+              proposal in Proposales for you to review and send.
             </h1>
-            <p className="lede">
-              Fieldwork researches a business from public sources, suggests the
-              services that fit, and creates a draft proposal in Proposales for
-              you to review and send.
-            </p>
           </section>
           <ol className="steps">
             {steps.map(([name, text], i) => (
@@ -277,9 +277,12 @@ export function ExampleWorkbench({
       )}
       <div className="shell" hidden={showLanding}>
         <aside className="sidebar">
-          <a href="/" className="brand">
-            <span className="mark">f.</span> fieldwork
-          </a>
+          <div>
+            <a href="/" className="brand">
+              <span className="mark">f.</span> fieldwork
+            </a>
+            <p className="partners">Metascalers × Proposales</p>
+          </div>
           <nav aria-label="Workspace">
             <ul>
               {session.authenticated && (
