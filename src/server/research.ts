@@ -80,6 +80,7 @@ export function createResearchStore(
         scope: a.scope,
       });
       const c = await pool.connect();
+      let discard = false;
       try {
         await c.query("BEGIN");
         await c.query(
@@ -134,10 +135,14 @@ export function createResearchStore(
         await c.query("COMMIT");
         return { claimed: true, record: record(r.rows[0]) };
       } catch (e) {
-        await c.query("ROLLBACK");
+        try {
+          await c.query("ROLLBACK");
+        } catch {
+          discard = true;
+        }
         throw e;
       } finally {
-        c.release();
+        c.release(discard);
       }
     },
     async get(id: string, scope: string) {
@@ -313,7 +318,9 @@ export function createResearchService(
         throw new Error("research_choice_invalid");
       const evidence = [
         ...data.evidence.filter((e) => candidate.sourceIds.includes(e.id)),
-        ...(choice.notes ? [notesEvidence(choice.notes, identified.createdAt)] : []),
+        ...(choice.notes
+          ? [notesEvidence(choice.notes, identified.createdAt)]
+          : []),
       ];
       if (!evidence.length) throw new Error("research_sources_missing");
       modelConfigured();

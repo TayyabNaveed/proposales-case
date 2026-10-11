@@ -117,6 +117,7 @@ export function createDraftStore(
       if (!scope || scope.length > 200) throw new Error("invalid_input");
       const hash = snapshotHash(snapshot),
         client = await pool.connect();
+      let discard = false;
       try {
         await client.query("BEGIN");
         const id = randomUUID();
@@ -154,10 +155,14 @@ export function createDraftStore(
         await client.query("COMMIT");
         return project(row);
       } catch (e) {
-        await client.query("ROLLBACK");
+        try {
+          await client.query("ROLLBACK");
+        } catch {
+          discard = true;
+        }
         throw e;
       } finally {
-        client.release();
+        client.release(discard);
       }
     },
   };

@@ -60,6 +60,7 @@ export function createRecommendationStore(
   return {
     async admit(input: AdmissionInput, refresh: boolean) {
       const client = await pool.connect();
+      let discard = false;
       try {
         await client.query("BEGIN");
         await client.query(
@@ -120,10 +121,14 @@ export function createRecommendationStore(
         await client.query("COMMIT");
         return { claimed: true, record: record(inserted.rows[0]) };
       } catch (error) {
-        await client.query("ROLLBACK");
+        try {
+          await client.query("ROLLBACK");
+        } catch {
+          discard = true;
+        }
         throw error;
       } finally {
-        client.release();
+        client.release(discard);
       }
     },
     async get(id: string, accessScope: string) {
