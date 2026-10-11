@@ -1,4 +1,5 @@
 import { checkOrigin, readSession } from "./access.js";
+import { logEvent, stackFrames } from "./log.js";
 export function sameOrigin(req: Request, env: NodeJS.ProcessEnv = process.env) {
   if (!env.APP_ORIGIN) throw new Error("access_unconfigured");
   if (!checkOrigin(req.headers.get("origin"), env.APP_ORIGIN))
@@ -109,6 +110,12 @@ export function safeError(error: unknown) {
   ];
 
   const safe = allowed.includes(code) ? code : "request_failed";
+  // An unrecognised error is a defect or an outage, not a bad request: log it.
+  if (safe === "request_failed")
+    logEvent("error", "unexpected_error", {
+      errorName: error instanceof Error ? error.name : typeof error,
+      stack: stackFrames(error),
+    });
   return Response.json(
     { error: safe },
     {
@@ -129,7 +136,9 @@ export function safeError(error: unknown) {
                       "research_configuration_missing",
                     ].includes(code)
                   ? 503
-                  : 400,
+                  : safe === "request_failed"
+                    ? 500
+                    : 400,
       headers: { "Cache-Control": "no-store" },
     },
   );

@@ -1,3 +1,4 @@
+import { logEvent } from "./log.js";
 import {
   proposalCategories,
   compositionAssetsSchema,
@@ -80,10 +81,9 @@ export async function withTemplateCover(
     return cover ? compositionAssetsSchema.parse({ ...assets, cover }) : assets;
   } catch (e) {
     const code = (e as { code?: unknown }).code;
-    console.error(
-      "template_cover_unavailable",
-      typeof code === "string" ? code : "unexpected",
-    );
+    logEvent("error", "template_cover_unavailable", {
+      code: typeof code === "string" ? code : "unexpected",
+    });
     return assets;
   }
 }

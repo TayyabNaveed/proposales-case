@@ -1,4 +1,5 @@
 import { trustedEditorUrl } from "./provider-url.js";
+import { logEvent } from "./log.js";
 import pg from "pg";
 import fs from "node:fs";
 import type { Operation, OperationStore, Outcome } from "./operations.js";
@@ -25,7 +26,7 @@ export function createDatabase(env: NodeJS.ProcessEnv = process.env) {
     application_name: "proposales-case",
   });
   pool.on("error", () => {
-    console.error("database_idle_connection_error");
+    logEvent("error", "database_idle_connection_error");
   });
   return pool;
 }
@@ -74,6 +75,11 @@ export function createOperationStore(
         [key, outcome.state, id, url ?? null, code],
       );
       if (r.rowCount !== 1) throw new Error("operation_transition_conflict");
+      if (outcome.state !== "confirmed")
+        logEvent(outcome.state === "unknown" ? "error" : "warn", "proposal_create_" + outcome.state, {
+          operationKey: key,
+          code,
+        });
     },
   };
 }

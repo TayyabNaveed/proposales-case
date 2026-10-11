@@ -1,5 +1,6 @@
+import { withRequestLog } from "../../../server/log";
 // Historical approval rows are preserved; there is no pre-draft approval in this workflow.
-export async function POST() {
+async function post() {
   return Response.json(
     {
       error: "endpoint_retired",
@@ -9,3 +10,4 @@ export async function POST() {
     { status: 410 },
   );
 }
+export const POST = withRequestLog("offers", post);

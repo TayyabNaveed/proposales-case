@@ -8,6 +8,7 @@ import {
   identifyResultSchema,
 } from "../domain/research-state.js";
 import { randomUUID } from "node:crypto";
+import { logEvent } from "./log.js";
 import { z } from "zod";
 import type pg from "pg";
 import { snapshotHash } from "./canonical.js";
@@ -186,6 +187,13 @@ export function createResearchStore(
         ],
       );
       if (r.rowCount !== 1) throw new Error("research_transition_conflict");
+      if (code)
+        logEvent(state === "partial" ? "warn" : "error", "run_failed", {
+          stage: r.rows[0].stage,
+          runId: id,
+          state,
+          code,
+        });
       return record(r.rows[0]);
     },
   };

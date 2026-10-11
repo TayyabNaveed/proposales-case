@@ -11,10 +11,11 @@ import { sameOrigin, smallJson, safeError } from "../../../server/http";
 import { consumeLoginAttempt } from "../../../server/access-store";
 import { database } from "../../../server/runtime";
 import { hasSession } from "../../../server/session";
-export async function GET() {
+import { withRequestLog } from "../../../server/log";
+async function get() {
   return Response.json({ authenticated: await hasSession() });
 }
-export async function POST(req: Request) {
+async function post(req: Request) {
   try {
     sameOrigin(req);
     const secret = process.env.SESSION_SECRET;
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
     return safeError(e);
   }
 }
-export async function DELETE(req: Request) {
+async function signOut(req: Request) {
   try {
     sameOrigin(req);
     (await cookies()).delete("case_session");
@@ -52,3 +53,6 @@ export async function DELETE(req: Request) {
     return safeError(e);
   }
 }
+export const GET = withRequestLog("session", get);
+export const POST = withRequestLog("session", post);
+export const DELETE = withRequestLog("session", signOut);

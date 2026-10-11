@@ -1,9 +1,10 @@
 import { researchHandlers } from "../../../server/services";
+import { withRequestLog } from "../../../server/log";
 export const runtime = "nodejs";
 export const maxDuration = 45;
-export async function POST(req: Request) {
-  return researchHandlers().identifyPOST(req);
-}
-export async function GET(req: Request) {
-  return researchHandlers().GET(req, "identify");
-}
+export const POST = withRequestLog("identify", (req) =>
+  researchHandlers().identifyPOST(req),
+);
+export const GET = withRequestLog("identify", (req) =>
+  researchHandlers().GET(req, "identify"),
+);

@@ -1,5 +1,4 @@
 import { usageHandlers } from "../../../server/services";
+import { withRequestLog } from "../../../server/log";
 export const runtime = "nodejs";
-export async function GET(req: Request) {
-  return usageHandlers().GET(req);
-}
+export const GET = withRequestLog("usage", (req) => usageHandlers().GET(req));

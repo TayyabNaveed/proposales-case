@@ -1,9 +1,10 @@
 import { apiHandlers } from "../../../server/services";
+import { withRequestLog } from "../../../server/log";
 export const runtime = "nodejs";
 export const maxDuration = 60;
-export async function POST(req: Request) {
-  return apiHandlers().draftsPOST(req);
-}
-export async function GET(req: Request) {
-  return apiHandlers().draftsGET(req);
-}
+export const POST = withRequestLog("drafts", (req) =>
+  apiHandlers().draftsPOST(req),
+);
+export const GET = withRequestLog("drafts", (req) =>
+  apiHandlers().draftsGET(req),
+);

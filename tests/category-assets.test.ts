@@ -187,7 +187,8 @@ test("a template cover that cannot be read never blocks the proposal", async () 
   } finally {
     console.error = original;
   }
-  assert.deepEqual(logged, [
-    ["template_cover_unavailable", "template_not_found"],
-  ]);
+  assert.deepEqual(
+    logged.map((a) => JSON.parse((a as string[])[0])),
+    [{ level: "error", event: "template_cover_unavailable", code: "template_not_found" }],
+  );
 });

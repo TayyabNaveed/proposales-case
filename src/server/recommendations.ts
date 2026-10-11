@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { dailyLimit } from "./limits.js";
+import { logEvent } from "./log.js";
 import type pg from "pg";
 import { reports, type ReportV2 } from "../domain/reports.js";
 import { catalogueV2, type CatalogueV2 } from "../domain/catalogue.js";
@@ -194,6 +195,17 @@ export function createRecommendationStore(
       );
       if (changed.rowCount !== 1)
         throw new Error("recommendation_transition_conflict");
+      if (errorCode)
+        logEvent("error", "run_failed", {
+          stage: "selection",
+          runId: id,
+          code: errorCode,
+          failureCode: diagnostics?.failureCode ?? null,
+          attempts: diagnostics?.attempts ?? null,
+          durationMs: diagnostics?.durationMs ?? null,
+          model: diagnostics?.model ?? null,
+          promptVersion: diagnostics?.promptVersion ?? null,
+        });
       return record(changed.rows[0]);
     },
   };
