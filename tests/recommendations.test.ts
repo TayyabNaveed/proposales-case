@@ -103,6 +103,12 @@ test("twice-invalid output fails without successful fallback or third billed dis
       }),
     (e) => {
       assert.equal((e as Error).message, "recommendation_invalid");
+      // The record names the rule that rejected the last attempt.
+      assert.equal(
+        (e as { diagnostics: { failureCode?: string } }).diagnostics
+          .failureCode,
+        "unsupported_service",
+      );
       return true;
     },
   );

@@ -227,6 +227,23 @@ createServer(async (req, res) => {
           "case-research-search": b.input.searchId,
           "case-research-report": b.id,
         };
+      } else if (which === "no-suggestions") {
+        const s = makeSearch("Quiet Burgers"),
+          i = makeIdentify(s),
+          r = makeReport(s, i.id),
+          rec = makeRecommendation(r.result.report);
+        rec.selection = {
+          items: [],
+          questions: ["Confirm which locations the proposal should cover."],
+          abstentionReason:
+            "The business has a confirmed website and several locations, but no evidenced need maps to a catalogue service.",
+        };
+        values = {
+          "case-research-search": s.id,
+          "case-research-identify": i.id,
+          "case-research-report": r.id,
+          ["case-recommendation:" + r.result.report.id]: rec.id,
+        };
       } else if (which === "stalled-selection") {
         const s = makeSearch("Stalled selection"),
           r = makeReport(s),

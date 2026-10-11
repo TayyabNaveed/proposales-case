@@ -285,3 +285,20 @@ test("proposal recovery only reacts to relevant storage keys", async () => {
   assert.equal(isProposalStorageKey("case-generation:no-website"), true);
   assert.equal(isProposalStorageKey(null), true); // localStorage.clear
 });
+
+test("when the AI suggests nothing, services the operator picks still make a proposal", async () => {
+  const { adjustedSelection } = await import("../src/domain/workbench.js");
+  const { buildDraftSnapshot } = await import("../src/domain/offers.js");
+  const { reports } = await import("../src/domain/reports.js");
+  const { catalogueV2 } = await import("../src/domain/catalogue.js");
+  const selection = adjustedSelection(
+    { items: [], questions: ["Which locations?"], abstentionReason: "No evidenced need." },
+    [{ serviceId: "faq-content", quantity: 1, disposition: "core" }],
+  );
+  const snapshot = buildDraftSnapshot(reports[1], selection, catalogueV2);
+  assert.deepEqual(
+    snapshot.items.map((i) => [i.serviceId, "addedBy" in i ? i.addedBy : null]),
+    [["faq-content", "operator"]],
+  );
+  assert.equal(snapshot.coreOneTimeMinor, 30000);
+});

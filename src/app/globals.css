@@ -649,7 +649,7 @@ summary:hover {
 .sources,
 .technical,
 .more-findings,
-.other-services {
+.catalogue {
   margin: 18px 0;
   padding-top: 14px;
   border-top: 1px solid var(--line);
@@ -695,16 +695,54 @@ blockquote {
 .service.chosen {
   border-color: #819477;
 }
-/* Other services: a compact list in its own scroll area. */
-.other-list {
-  max-height: 28rem;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  margin-top: 10px;
-  padding: 8px;
-  border: 1px solid var(--line);
+/* Services flow: suggestions, then the catalogue by category, then the
+   points to confirm. Each block starts with a plain title. */
+.block-title {
+  font-size: 18px;
+  margin: 24px 0 4px;
+}
+.no-suggestions {
+  margin: 18px 0;
+  padding: 16px 20px;
+  border: 1px dashed var(--line-strong);
   border-radius: 10px;
-  background: var(--paper);
+  background: var(--surface);
+}
+.no-suggestions p {
+  margin: 4px 0 0;
+}
+.no-suggestions details {
+  margin-top: 8px;
+}
+.category-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 14px;
+}
+.category-pills button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 14px;
+  background: var(--surface);
+}
+.category-pills button[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.pill-count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
 }
 .service.other {
   padding: 12px 14px;

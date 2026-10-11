@@ -1,9 +1,11 @@
+import { useState } from "react";
 import {
   canRestartRecommendation,
   serviceAvailability,
 } from "../../domain/workbench";
 import { catalogueV2, money } from "../../domain/catalogue";
 import { presentServices } from "../../domain/presentation";
+import { proposalCategories } from "../../domain/proposal-groups";
 import type { ProposalWorkflow } from "./useProposalWorkflow";
 import { friendlyDate } from "./api";
 type Service = (typeof catalogueV2.services)[number];
@@ -98,6 +100,9 @@ export function ServicesView({
               : "Suggestions need another check."}{" "}
         Sample prices exclude tax.
       </p>
+      {items.length > 0 && (
+        <h3 className="block-title">Suggested for this business</h3>
+      )}
       {items.length > 0 &&
         (["core", "optional"] as const).map((group) => (
           <div className="service-group" key={group}>
@@ -176,8 +181,28 @@ export function ServicesView({
               })}
           </div>
         ))}
-      {rec.selection?.abstentionReason && (
-        <div className="empty">{rec.selection.abstentionReason}</div>
+      {rec.selection && !items.length && (
+        <div className="no-suggestions">
+          <strong>No services suggested</strong>
+          <p>
+            The research didn’t show a clear need that one of these services
+            would solve, so nothing is preselected. Choose the services you want
+            to offer below.
+          </p>
+          {rec.selection.abstentionReason && (
+            <details>
+              <summary>Why nothing was suggested</summary>
+              <p>{rec.selection.abstentionReason}</p>
+            </details>
+          )}
+        </div>
+      )}
+      {rec.selection && flow.report && (
+        <ServiceCatalogue
+          flow={flow}
+          blocked={blocked}
+          suggested={items.length > 0}
+        />
       )}
       {!!rec.selection?.questions.length && (
         <div className="principle compact">
@@ -188,9 +213,6 @@ export function ServicesView({
             ))}
           </ul>
         </div>
-      )}
-      {rec.selection && flow.report && (
-        <OtherServices flow={flow} blocked={blocked} />
       )}
       {authenticated && (
         <div className="ai-actions">
@@ -248,33 +270,70 @@ export function ServicesView({
   );
 }
 
-// The rest of the catalogue: collapsed and unchecked, so the operator can add
+// The rest of the catalogue, one category at a time, so the operator can add
 // what the AI did not suggest. Added services are attributed to the operator.
-function OtherServices({
+function ServiceCatalogue({
   flow,
   blocked,
+  suggested: hasSuggestions,
 }: {
   flow: ProposalWorkflow;
   blocked: boolean;
+  suggested: boolean;
 }) {
   const suggested = new Set(
     flow.recommendation.selection?.items.map((i) => i.serviceId),
   );
   const chosen = flow.selected.map((p) => p.serviceId);
-  const others = catalogueV2.services.filter((s) => !suggested.has(s.id));
-  const added = others.filter((s) => chosen.includes(s.id)).length;
-  if (!others.length || !flow.report) return null;
+  const categories = proposalCategories
+    .map((c) => ({
+      id: c.id,
+      title: c.title,
+      services: catalogueV2.services.filter(
+        (s) =>
+          (c.serviceIds as readonly string[]).includes(s.id) &&
+          !suggested.has(s.id),
+      ),
+    }))
+    .filter((c) => c.services.length);
+  const [active, setActive] = useState<string>(categories[0]?.id ?? "");
+  const current = categories.find((c) => c.id === active) ?? categories[0];
+  if (!current || !flow.report) return null;
   return (
-    <details className="other-services" open>
-      <summary>
-        Other services ({others.length}){added ? ` · ${added} added` : ""}
-      </summary>
+    <div className="catalogue">
+      <h3 className="block-title">
+        {hasSuggestions ? "Add other services" : "Choose services"}
+      </h3>
       <p className="caption">
-        Not suggested for this business. Add any that fit; they’re marked as
-        added by you.
+        {hasSuggestions ? "Not suggested for this business. " : ""}
+        Anything you add is marked as added by you.
       </p>
-      <div className="other-list" tabIndex={0} aria-label="Other services">
-        {others.map((service) => {
+      <div
+        className="category-pills"
+        role="group"
+        aria-label="Service categories"
+      >
+        {categories.map((c) => {
+          const added = c.services.filter((s) => chosen.includes(s.id)).length;
+          return (
+            <button
+              key={c.id}
+              type="button"
+              aria-pressed={c.id === current.id}
+              onClick={() => setActive(c.id)}
+            >
+              {c.title}
+              {added > 0 && (
+                <span className="pill-count" aria-label={`${added} added`}>
+                  {added}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <div className="catalogue-list" aria-label={current.title}>
+        {current.services.map((service) => {
           const pick = flow.selected.find((p) => p.serviceId === service.id);
           const state = serviceAvailability(
             service,
@@ -327,6 +386,6 @@ function OtherServices({
           );
         })}
       </div>
-    </details>
+    </div>
   );
 }

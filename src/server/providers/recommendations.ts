@@ -300,5 +300,9 @@ export async function recommendServices(
       repairCode = safeValidationCode(error);
     }
   }
-  throw new RecommendationFailure("recommendation_invalid", diagnostics());
+  // Record which rule rejected the last attempt, so a failure can be diagnosed.
+  throw new RecommendationFailure("recommendation_invalid", {
+    ...diagnostics(),
+    failureCode: repairCode,
+  });
 }
