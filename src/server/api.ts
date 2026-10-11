@@ -45,6 +45,8 @@ export function publicRecommendation(r: RecommendationRecord) {
     cacheHit: r.cacheHit,
     expiresAt: r.expiresAt,
     errorCode: r.errorCode,
+    // Why a failed run failed, e.g. ai_balance_empty; a safe code only.
+    failureCode: r.diagnostics?.failureCode ?? null,
     createdAt: r.createdAt,
   };
 }

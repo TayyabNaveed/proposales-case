@@ -31,6 +31,15 @@ const sameValue = (a: unknown, b: unknown) => {
       : v;
   return JSON.stringify(sorted(a)) === JSON.stringify(sorted(b));
 };
+// A stage error carries the failure category, so the screen can say what to do.
+export class StageError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string | null,
+  ) {
+    super(message);
+  }
+}
 const retry = (s: { state: string; createdAt: string } | null | undefined) =>
   !!s && (s.state === "failed" || s.state === "partial" || canRestartReport(s));
 
@@ -59,10 +68,11 @@ export async function identifyStep(
     d.onSearch(search);
   }
   if (!search || !isFreshStage(search))
-    throw Error(
+    throw new StageError(
       search?.state === "partial"
         ? "Some sources could not be retrieved. Try again or explore an example."
         : "Research is still in progress. Check saved progress before continuing.",
+      search?.result?.failure,
     );
   if (!identify || identify.input.searchId !== search.id || !isFreshStage(identify)) {
     d.onProgress("Finding the business");
@@ -76,10 +86,11 @@ export async function identifyStep(
     identify = value;
   }
   if (!identify || !isFreshStage(identify) || !identify.result)
-    throw Error(
+    throw new StageError(
       identify?.state === "running"
         ? "Still looking for the business. Check saved progress before continuing."
         : "The business could not be identified. Your sources are saved; try again.",
+      identify?.diagnostics?.check,
     );
   if (!d.isCurrent()) return;
   d.onIdentify(identify);
@@ -119,10 +130,11 @@ export async function continueWithChoice(
     d.onSavedReport(report);
   }
   if (!report || !isFreshStage(report) || !report.result)
-    throw Error(
+    throw new StageError(
       report?.state === "running"
         ? "The report is still in progress. Check saved progress before continuing."
         : "The report could not be completed. Your sources are saved; try again.",
+      report?.diagnostics?.check,
     );
   if (!d.isCurrent()) return;
   d.onReport(report.result.report);

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { aiFailureCode } from "../provider-errors.js";
 import { repairInstruction } from "../../prompts/service-recommendation/v1.js";
 import { activePrompts } from "../../prompts/active.js";
 import { promptProvenance } from "../prompt-provenance.js";
@@ -39,6 +40,8 @@ export type RecommendationRun = {
   attempts: number;
   durationMs: number;
   validationOutcome: "validated";
+  // Why a failed call failed (server/provider-errors.ts), on diagnostics only.
+  failureCode?: string;
   provenance?: ReturnType<typeof promptProvenance> & {
     repairHash: string;
     requestHash?: string;
@@ -274,17 +277,17 @@ export async function recommendServices(
         addUsage(error.usage);
         repairCode = "invalid_schema";
         if (attempt === 0 && !totalSignal.aborted) continue;
-        throw new RecommendationFailure(
-          "recommendation_invalid",
-          diagnostics(),
-        );
+        throw new RecommendationFailure("recommendation_invalid", {
+          ...diagnostics(),
+          failureCode: "output_schema",
+        });
       }
       addUsage();
       throw new RecommendationFailure(
         totalSignal.aborted
           ? "recommendation_cancelled"
           : "recommendation_call_failed",
-        diagnostics(),
+        { ...diagnostics(), failureCode: aiFailureCode(error) },
       );
     }
     try {

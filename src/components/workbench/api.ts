@@ -1,4 +1,25 @@
 export const explanations: Record<string, string> = {
+  // Provider failure categories (server/provider-errors.ts).
+  search_credits_exhausted:
+    "Web search credits are used up for this billing period. Top up the Tavily plan to research new businesses; saved work and examples still open.",
+  search_auth: "Web search isn’t authorised: the Tavily API key is missing or invalid.",
+  search_rate_limited: "Web search is busy right now. Wait a minute, then try again.",
+  search_unavailable: "Web search is temporarily unavailable. Try again shortly.",
+  search_timeout: "Web search took too long. Try again.",
+  search_rejected: "Web search refused the request. Check the business name and location.",
+  search_invalid_response: "Web search returned an unreadable answer. Try again.",
+  search_network: "Web search couldn’t be reached. Check the connection and try again.",
+  ai_balance_empty:
+    "The AI provider’s balance is empty. Top up DeepSeek to continue; your sources and saved work are kept.",
+  ai_auth: "The AI provider isn’t authorised: the DeepSeek API key is missing or invalid.",
+  ai_rate_limited: "The AI provider is busy right now. Wait a minute, then try again.",
+  ai_unavailable: "The AI provider is temporarily unavailable. Try again shortly.",
+  ai_timeout: "The AI took too long to answer. Try again; nothing is lost.",
+  ai_rejected: "The AI provider refused the request. Try again; if it persists, check the configured model.",
+  ai_network: "The AI provider couldn’t be reached. Check the connection and try again.",
+  output_schema: "The AI’s answer didn’t have the expected shape. Try again; nothing is lost.",
+  research_unsupported_summary:
+    "The AI’s summary made a claim the sources don’t support, so it was not used. Try again.",
   access_required: "Your access has expired. Enter the demo code to continue.",
   origin_rejected: "Open this demo at its configured address to continue.",
   invalid_input: "Check the supplied information and try again.",

@@ -30,6 +30,8 @@ export const searchResultSchema = z.object({
   credits: z.number().nonnegative().nullable(),
   durationMs: z.number().nonnegative(),
   failedQueries: count,
+  // Why queries failed (server/provider-errors.ts); absent on older records.
+  failure: z.string().max(40).nullable().optional(),
 });
 export const reportResultSchema = z.object({
   report: reportSchema,

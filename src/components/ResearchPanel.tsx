@@ -178,7 +178,7 @@ export function ResearchPanel({
         setMessage(
           e instanceof Error && e.name === "ZodError"
             ? "Check the business name and location."
-            : (e as Error).message,
+            : explanations[(e as { code?: string }).code ?? ""] ?? (e as Error).message,
         );
     } finally {
       active.current = false;
@@ -211,7 +211,8 @@ export function ResearchPanel({
       if (revision.current === rev)
         setMessage("Analysis complete. Review the suggested services below.");
     } catch (e) {
-      if (revision.current === rev) setMessage((e as Error).message);
+      if (revision.current === rev)
+        setMessage(explanations[(e as { code?: string }).code ?? ""] ?? (e as Error).message);
     } finally {
       active.current = false;
       if (revision.current === rev) setBusy("");

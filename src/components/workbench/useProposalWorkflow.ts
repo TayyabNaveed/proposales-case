@@ -30,6 +30,7 @@ export type Recommendation = {
   cacheHit?: boolean;
   usage?: { inputTokens: number | null; outputTokens: number | null };
   errorCode?: string | null;
+  failureCode?: string | null;
 };
 export type Outcome = {
   state: string;
@@ -196,7 +197,8 @@ export function useProposalWorkflow(
       }
       if (v.recommendation.state !== "ready")
         throw Error(
-          explanations[v.recommendation.errorCode ?? ""] ??
+          explanations[v.recommendation.failureCode ?? ""] ??
+            explanations[v.recommendation.errorCode ?? ""] ??
             "Suggestions are still in progress. Check saved progress before continuing.",
         );
       setMessage(

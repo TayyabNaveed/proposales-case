@@ -1,5 +1,6 @@
 import { activePrompts, type PromptDefinition } from "../../prompts/active.js";
 import { decideIdentity } from "../../domain/identity.js";
+import { aiFailureCode, searchErrorCode, searchStatusCode } from "../provider-errors.js";
 import {
   introOutputSchema,
   keepSupported,
@@ -86,6 +87,21 @@ export async function searchBusiness(
       base + " contact",
       base + (input.website ? " " + new URL(input.website).hostname : " reviews"),
     ];
+  // The most serious cause across queries; exhausted credits outrank all others.
+  const severity = [
+    "search_credits_exhausted",
+    "search_auth",
+    "search_rate_limited",
+    "search_unavailable",
+    "search_rejected",
+    "search_timeout",
+    "search_invalid_response",
+    "search_network",
+  ];
+  let failure: string | null = null;
+  const note = (code: string) => {
+    if (failure === null || severity.indexOf(code) < severity.indexOf(failure)) failure = code;
+  };
   let retryAvailable = true,
     attempts = 0,
     failedQueries = 0,
@@ -128,6 +144,7 @@ export async function searchBusiness(
           );
           if (!response.ok) {
             credits = null;
+            note(searchStatusCode(response.status));
             await response.body?.cancel();
             const retryable = response.status >= 500 || response.status === 429;
             if (pass === 0 && retryable && retryAvailable) {
@@ -158,8 +175,10 @@ export async function searchBusiness(
               : [];
           });
           completed = true;
-        } catch {
+        } catch (error) {
           credits = null;
+          if (!(error instanceof Error && error.message === "research_search_failed"))
+            note(searchErrorCode(error));
           if (
             pass === 0 &&
             retryAvailable &&
@@ -195,6 +214,7 @@ export async function searchBusiness(
     credits,
     durationMs: Date.now() - start,
     failedQueries,
+    failure,
   });
 }
 export const researchSystemPrompt = activePrompts.research.system;
@@ -294,12 +314,15 @@ async function structuredCall<S extends z.ZodType, R>(
       retainUsage(error.usage);
       generated = true;
     }
+    // Our own checks, an unusable answer, or why the provider call failed.
     const check =
       error instanceof Error && /^research_(unsupported|choice)\w*$/.test(error.message)
         ? error.message
         : NoObjectGeneratedError.isInstance(error)
           ? "output_schema"
-          : undefined;
+          : generated
+            ? undefined
+            : aiFailureCode(error);
     throw fail({
       ...diagnostics(),
       failure: generated ? "validation_failed" : "provider_failed",
