@@ -287,3 +287,25 @@ Final HTTP integration passed (1/1): unauthorised/cross-origin writes rejected, 
 - Evidence: 178 offline tests, DB 12/12, typecheck.
 - Decision (Tayyab): keep `PROPOSAL_COMPOSITION`; the earlier logged rename to `STABLE_PROPOSAL_COMPOSITION` was never implemented and is dropped.
 - Deferred (Tayyab): the two template reads per new proposal (236–547 ms) stay sequential for now; running them in parallel is the noted improvement.
+
+## 11 October 2026 — missing-request recovery
+
+- Reproduced an authenticated request-ID lookup with no saved snapshot returning draft_missing/404. The browser saves recovery before dispatch, so absence is a valid state.
+- GET /api/drafts?requestId=… now returns snapshot:null and not_started, enabling the existing restored-request retry. Snapshot-ID misses and lookup failures stay errors; status does not dispatch creation.
+- Tests cover authenticated/unauthenticated absence, lookup failure, and retry preserving request ID, selections and approved introduction/recipient. Updated the synthetic fixture contract.
+- Validation: 182 offline tests, 12 database integration tests, typecheck and production build pass. Synthetic browser recovery verification remains outstanding. Changes are local, uncommitted.
+
+## 11 October 2026 — recovery, expiry and pre-delivery hardening
+
+- Browser recovery distinguishes unreadable data from inaccessible storage. Discard compares under the same Web Lock as admission; replacing a copy in another tab prevents deletion. Relevant storage notifications preserve edits, and notifications during actions replay afterward.
+- Claimed/unknown provider writes show an unknown outcome instead of claiming nothing was created. Both business-choice and create dialogs close on access expiry, with a visible access message.
+- Network/HTML API errors use an availability message; malformed401 bodies still expire access. Supported introductions stop at whole sentences within1500 characters; proposal-intro-2 changes the validation/cache identity while retaining v1.
+- Response headers protect framing/content type/referrers/permissions, production adds HSTS, and framework disclosure is disabled. A failed rollback destroys the DB client and preserves the original error. Architecture and deferred system boundaries now describe current behaviour.
+- Verification:189 offline tests,12 isolated-schema database tests, typecheck, production build, response-header checks and synthetic browser recovery/expiry/storage/status scenarios passed. Two review findings about discard/admission and busy-action events were corrected and re-reviewed. No live provider write during verification.
+
+## 11 October 2026 — expired recovery and recorded-example edits
+
+- Review finding 1: a saved browser request that never reached the server stayed locked once its suggestions expired. The status read returned `not_started`; the same-ID retry was refused as `stale_recommendation`, and a previously pending request is never released on a client-side rejection. Absence alone could not justify release, since another tab could be saving the same request. Ruling: `draft_snapshots` saves lock the recommendation (`FOR SHARE`) and insert only while `expires_at > clock_timestamp()`; `resolveRequest` locks it `FOR UPDATE`, so a save already in flight commits first and none can start after expiry (`expires_at` is set once and never extended). `GET /api/drafts?requestId=…&recommendationId=…` returns `expired` for an absent request with expired suggestions. The browser treats it as settled, shows that nothing was created, and offers "Refresh expired suggestions" in the main actions. A refused retry of a saved request asks the server for this answer rather than guessing.
+- Review finding 2: preparing a recorded example in another tab reset edited quantities. Cause: edits were inferred from the recommendation having an ID, and recorded examples have none. Ruling: the workflow records operator edits explicitly. Suggestions adopted from another tab replace the scope only when nothing was edited; the operator's own requests for suggestions still replace it.
+- Evidence: 191 offline tests (new: expired resolution never dispatches, resolved snapshots report status, invalid parameter mix, rollback for the new transaction), DB 13/13 (new: expired absence, idempotent save after expiry, cross-scope, and a reader that waits for an in-flight save and then reports it). The existing budget test now refreshes suggestions before saving new requests, as the store now refuses expired ones. Synthetic browser checks against the production build: expired recovery releases, shows the notice and refresh, enables switching and creation after refresh, with 0 provider creates; quantity 3 survives another tab preparing the same example, and that tab's suggestions are adopted; an unexpired unsaved request still offers retry. Typecheck and production build pass.
+- Not changed: a request refused for a non-time staleness (e.g. a model or catalogue change after deploy) stays recoverable only by retry until its suggestions expire, within 24 hours.
