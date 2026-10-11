@@ -50,6 +50,12 @@ Code cannot judge meaning. If an excerpt names the business next to a place that
 - **Earlier drafts are untouched.** `proposal-2` and legacy drafts keep their exact payload and checks.
 - **Operator-added services** carry no "Why" line. The agency description lives in `domain/agency.ts`.
 
+## Proposals page
+
+`GET /api/proposals` (authenticated) lists this scope's drafts, newest first. Each row joins the immutable snapshot to its provider operation, using the deterministic key `draft:<company>:<snapshot>:<hash>`, and to its AI recommendation. It reads live status from Proposales, four at a time: draft, sent (`active`), accepted, rejected, expired, withdrawn or replaced. A failed read shows "status unavailable" and never hides the row.
+
+Each row records the operator's scope decisions neutrally (kept, removed and added services) and shows the review questions, which are not part of the proposal. Proposales documents no send or status-change API, so sending stays in Proposales. The status webhook's activation is undocumented, so status is read on demand.
+
 ## Identities and compatibility
 
 `server/canonical.ts` preserves historical canonical JSON/hash bytes. Alphabetic service order remains canonical. `domain/presentation.ts` independently orders core/foundational work, supporting work, monthly services and optional extras.

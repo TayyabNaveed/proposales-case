@@ -1,6 +1,6 @@
 # Guided proposal flow
 
-Status: approved direction, 11 October 2026. Phase 1 and phase 2 (other services, usage, notes, introduction, recipient) implemented; per-service images and cover pending. Each phase is reviewed before it is committed. How this spec was produced is described in [WORKFLOW](../WORKFLOW.md).
+Status: approved direction, 11 October 2026. Phase 1 and phase 2 (other services, usage, notes, introduction, recipient) implemented; per-service images and cover in progress separately; phase 3 (Proposals page) implemented. Each phase is reviewed before it is committed. How this spec was produced is described in [WORKFLOW](../WORKFLOW.md).
 
 ## Problem
 

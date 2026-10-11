@@ -212,3 +212,9 @@ Final HTTP integration passed (1/1): unauthorised/cross-origin writes rejected, 
 - **Create dialog:** editable introduction; recipient with company prefilled and email suggestions found by code in the chosen business's sources (own domain and role addresses first; a directory's own address excluded); review questions shown as a reminder for the operator only.
 - **`proposal-3` composition:** client-facing title, introduction, "Prices exclude VAT.", optional recipient, no questions. The read-back check compares the recipient with what was entered, or requires none (noted for Tayyab, who accepted recipients for organising drafts). Older compositions are byte-identical.
 - **Evidence:** 152 offline tests, DB 10/10, build. Real local run for Handy Heroes AB: introduction drafted; draft confirmed with no issues; repeat reused; Proposales shows the new title, the recipient (reserved example.com address) and two blocks. No email sent.
+
+## 11 October 2026 — Phase 3: Proposals page
+
+- Built in a separate worktree branch (`claude/proposals-page`) while another agent worked on category artwork in the main folder, so neither overwrote the other's uncommitted changes.
+- `server/proposals.ts` joins drafts, provider operations (deterministic key) and recommendations. Live status is read via the existing scoped `getDraft`, which now also keeps `status_changed_at`. A failed read becomes "unavailable" and keeps the row. Scope changes are recorded neutrally (kept, removed, added). Review questions are shown here, not in the proposal.
+- New "Proposals" tab (arrow keys, Home and End across three tabs). Integration test covers the join, status mapping, failure, scope isolation and changes. Real read-only check: 4 proposals with live status in 757 ms. 152 offline tests, DB 11/11, build.

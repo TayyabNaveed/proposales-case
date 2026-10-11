@@ -36,6 +36,7 @@ const proposalSchema = z.object({
   company_id: numericId,
   url: z.unknown().optional().transform(trustedEditorUrl),
   status: z.string().nullable(),
+  status_changed_at: z.number().nullable().optional(),
   data: z.record(z.string(), z.unknown()).nullish(),
   currency: z.string().optional(),
   title_md: z.string().nullable().optional(),

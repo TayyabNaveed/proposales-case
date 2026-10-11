@@ -5,6 +5,7 @@ import { findSavedGeneration, canAdoptReport } from "../domain/workbench";
 import { apiRequest } from "./workbench/api";
 import { ResearchPanel } from "./ResearchPanel";
 import { UsageLine } from "./workbench/UsageLine";
+import { ProposalsList } from "./workbench/ProposalsList";
 import { useDemoSession } from "./workbench/useDemoSession";
 import {
   useProposalWorkflow,
@@ -45,7 +46,7 @@ export function ExampleWorkbench() {
   const session = useDemoSession(),
     live = useProposalWorkflow(null, session),
     examples = useProposalWorkflow(reports[0], session);
-  const [tab, setTab] = useState<"research" | "examples">("research"),
+  const [tab, setTab] = useState<"research" | "examples" | "proposals">("research"),
     [code, setCode] = useState(""),
     [researchBusy, setResearchBusy] = useState(false),
     // Bumped when research or suggestions finish, so the usage line reloads.
@@ -108,19 +109,22 @@ export function ExampleWorkbench() {
     };
   }, [saved?.reportId, saved?.request.requestId, session.authenticated]);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const tabs = ["research", "examples", "proposals"] as const;
   function navigate(index: number) {
-    setTab(index === 0 ? "research" : "examples");
+    setTab(tabs[index]);
     tabRefs.current[index]?.focus();
   }
   function tabKey(e: React.KeyboardEvent, index: number) {
     const next =
-      e.key === "ArrowRight" || e.key === "ArrowLeft"
-        ? 1 - index
-        : e.key === "Home"
-          ? 0
-          : e.key === "End"
-            ? 1
-            : null;
+      e.key === "ArrowRight"
+        ? (index + 1) % tabs.length
+        : e.key === "ArrowLeft"
+          ? (index + tabs.length - 1) % tabs.length
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? tabs.length - 1
+              : null;
     if (next !== null) {
       e.preventDefault();
       navigate(next);
@@ -154,7 +158,7 @@ export function ExampleWorkbench() {
         </p>
       </section>
       <div role="tablist" aria-label="Choose a workflow" className="main-tabs">
-        {(["research", "examples"] as const).map((name, index) => (
+        {tabs.map((name, index) => (
           <button
             key={name}
             id={"tab-" + name}
@@ -168,7 +172,11 @@ export function ExampleWorkbench() {
             onClick={() => setTab(name)}
             onKeyDown={(e) => tabKey(e, index)}
           >
-            {name === "research" ? "Research a business" : "Explore examples"}
+            {name === "research"
+              ? "Research a business"
+              : name === "examples"
+                ? "Explore examples"
+                : "Proposals"}
           </button>
         ))}
       </div>
@@ -299,6 +307,19 @@ export function ExampleWorkbench() {
           flow={examples}
           authenticated={session.authenticated}
           blocked={live.locked || researchBusy || recoveryBlocked}
+        />
+      </div>
+      <div
+        role="tabpanel"
+        id="panel-proposals"
+        aria-labelledby="tab-proposals"
+        hidden={tab !== "proposals"}
+        tabIndex={0}
+      >
+        <ProposalsList
+          active={tab === "proposals"}
+          authenticated={session.authenticated}
+          onExpired={session.expire}
         />
       </div>
       <footer>

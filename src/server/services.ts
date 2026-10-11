@@ -20,6 +20,7 @@ import { consumeActionAttempt } from "./access-store.js";
 import { createResearchStore, createResearchService } from "./research.js";
 import { createResearchApi } from "./research-api.js";
 import { readUsage } from "./usage.js";
+import { listProposals } from "./proposals.js";
 import { account, safeError, smallJson } from "./http.js";
 import { createIntroService } from "./intro.js";
 import { adjustmentsSchema } from "./drafts.js";
@@ -199,6 +200,28 @@ export function introHandlers() {
           },
           { headers: { "Cache-Control": "no-store" } },
         );
+      } catch (e) {
+        return safeError(e);
+      }
+    },
+  };
+}
+export function proposalHandlers() {
+  return {
+    async GET(req: Request) {
+      try {
+        const scope = account(req, false);
+        if (!(await consume(scope, "proposals-read")))
+          throw new Error("too_many_attempts");
+        const companyId = process.env.PROPOSALES_COMPANY_ID ?? "",
+          apiKey = process.env.PROPOSALES_API_KEY ?? "";
+        if (!apiKey || !companyId) throw new Error("provider_configuration_missing");
+        const provider = createProposales({ apiKey, companyId });
+        const proposals = await listProposals(database(), scope, companyId, async (id) => {
+          const p = await provider.getDraft(id);
+          return { status: p.status, statusChangedAt: p.status_changed_at ?? null };
+        });
+        return Response.json({ proposals }, { headers: { "Cache-Control": "no-store" } });
       } catch (e) {
         return safeError(e);
       }
