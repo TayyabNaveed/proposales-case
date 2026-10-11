@@ -54,3 +54,25 @@ test("login limits use a hashed per-visitor bucket only behind Vercel, with a gl
   assert.ok(!a[0].bucket.includes("203.0.113.9"));
   assert.equal(loginBuckets(req({}), "s", vercel).length, 1);
 });
+
+test("a visitor over its own login limit never consumes the global cap", async () => {
+  const { admitLogin } = await import("../src/server/access.js");
+  const counts = new Map<string, number>();
+  const consume = async (bucket: string, limit: number) => {
+    const n = (counts.get(bucket) ?? 0) + 1;
+    counts.set(bucket, n);
+    return n <= limit;
+  };
+  const buckets = [
+    { bucket: "visitor", limit: 5 },
+    { bucket: "global", limit: 30 },
+  ];
+  // One source sends 100 attempts: only the first 5 reach the global bucket.
+  for (let i = 0; i < 100; i++) await admitLogin(buckets, consume);
+  assert.equal(counts.get("global"), 5);
+  // Another visitor still gets in.
+  assert.equal(
+    await admitLogin([{ bucket: "other", limit: 5 }, buckets[1]], consume),
+    true,
+  );
+});

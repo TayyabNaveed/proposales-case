@@ -14,6 +14,8 @@ import {
   canReleaseRejectedGeneration,
   type Adjustment,
   isSettledOutcome,
+  isProposalStorageKey,
+  UnreadableGeneration,
 } from "../../domain/workbench";
 import { apiRequest, readSaved, explanations } from "./api";
 import type { DemoSession } from "./useDemoSession";
@@ -71,18 +73,45 @@ export function useProposalWorkflow(
     [restoring, setRestoring] = useState(!!firstReport),
     [storageIssue, setStorageIssue] = useState(false);
   const [storageRevision, setStorageRevision] = useState(0);
+  const storageRefreshQueued = useRef(false);
+  // Whether `selected` holds the operator's choices rather than a suggestion's.
+  const edited = useRef(false);
   useEffect(() => {
-    const changed = () => setStorageRevision((n) => n + 1);
-    window.addEventListener("storage", changed);
-    return () => window.removeEventListener("storage", changed);
+    const changed = () => {
+      if (action.current) storageRefreshQueued.current = true;
+      else setStorageRevision((n) => n + 1);
+    };
+    const storageChanged = (event: StorageEvent) => {
+      if (isProposalStorageKey(event.key, current.current?.id)) changed();
+    };
+    window.addEventListener("storage", storageChanged);
+    window.addEventListener("case-generation-changed", changed);
+    return () => {
+      window.removeEventListener("storage", storageChanged);
+      window.removeEventListener("case-generation-changed", changed);
+    };
   }, []);
+  const latestRecommendation = useRef(recommendation);
+  latestRecommendation.current = recommendation;
   const revision = useRef(0),
     action = useRef(false),
     current = useRef(report);
   current.current = report;
+  function finishAction() {
+    action.current = false;
+    if (storageRefreshQueued.current) {
+      storageRefreshQueued.current = false;
+      setStorageRevision((n) => n + 1);
+    }
+  }
   const request = <T>(path: string, body?: unknown) =>
     apiRequest<T>(path, body, session.expire);
   const key = (id: string) => "case-generation:" + id;
+  const statusPath = (p: Pending) =>
+    "/api/drafts?requestId=" +
+    encodeURIComponent(p.requestId) +
+    "&recommendationId=" +
+    encodeURIComponent(p.recommendationId);
   useEffect(() => {
     if (!report) {
       setRestoring(false);
@@ -96,11 +125,14 @@ export function useProposalWorkflow(
       try {
         p = restorePendingGeneration(readSaved(key(report!.id)));
         setPending(p);
+        if (storageIssue) setMessage("");
         setStorageIssue(false);
-      } catch {
+      } catch (error) {
         setStorageIssue(true);
         setMessage(
-          "Saved proposal recovery could not be read. Restore browser storage before creating another proposal.",
+          error instanceof UnreadableGeneration
+            ? error.message
+            : "Saved proposal recovery could not be read. Restore browser storage before creating another proposal.",
         );
         return;
       }
@@ -108,7 +140,7 @@ export function useProposalWorkflow(
       try {
         const rid =
           p?.recommendationId ?? readSaved("case-recommendation:" + report!.id);
-        if (rid) {
+        if (rid && (p || latestRecommendation.current.id !== rid)) {
           const v = await request<{ recommendation: Recommendation }>(
             "/api/recommendations?id=" + encodeURIComponent(rid),
           );
@@ -116,14 +148,14 @@ export function useProposalWorkflow(
           if (v.recommendation.reportId !== report!.id)
             throw Error("Saved suggestions belong to a different business.");
           setRecommendation(v.recommendation);
-          setSelected(
-            p ? p.selections : adjustments(v.recommendation.selection),
-          );
+          if (p) {
+            edited.current = true;
+            setSelected(p.selections);
+          } else if (!edited.current)
+            setSelected(adjustments(v.recommendation.selection));
         }
         if (p) {
-          const v = await request<{ outcome: Outcome }>(
-            "/api/drafts?requestId=" + encodeURIComponent(p.requestId),
-          );
+          const v = await request<{ outcome: Outcome }>(statusPath(p));
           if (cancelled || rev !== revision.current) return;
           settle(v.outcome);
         }
@@ -152,6 +184,7 @@ export function useProposalWorkflow(
     const r = initial(next);
     setRecommendation(r);
     setSelected(adjustments(r.selection));
+    edited.current = false;
     setPending(null);
     setOutcome(null);
     setMessage("");
@@ -187,6 +220,7 @@ export function useProposalWorkflow(
       if (rev !== revision.current || findSavedGeneration(localStorage)) return;
       setRecommendation(v.recommendation);
       setSelected(adjustments(v.recommendation.selection));
+      edited.current = false;
       if (v.recommendation.id) {
         try {
           localStorage.setItem(
@@ -208,7 +242,7 @@ export function useProposalWorkflow(
       if (rev === revision.current) setMessage((e as Error).message);
       throw e;
     } finally {
-      action.current = false;
+      finishAction();
       if (rev === revision.current) setBusy("");
     }
   }
@@ -224,10 +258,11 @@ export function useProposalWorkflow(
       if (rev !== revision.current) return;
       setRecommendation(v.recommendation);
       setSelected(adjustments(v.recommendation.selection));
+      edited.current = false;
     } catch (e) {
       setMessage((e as Error).message);
     } finally {
-      action.current = false;
+      finishAction();
       setBusy("");
     }
   }
@@ -255,7 +290,7 @@ export function useProposalWorkflow(
       await admitBrowserGeneration(localStorage, navigator.locks, report.id, p);
       window.dispatchEvent(new Event("case-generation-changed"));
     } catch (error) {
-      action.current = false;
+      finishAction();
       setBusy("");
       setMessage((error as Error).message);
       return;
@@ -282,6 +317,18 @@ export function useProposalWorkflow(
           window.dispatchEvent(new Event("case-generation-changed"));
           setOutcome(null);
           setMessage((e as Error).message);
+        } else if (
+          wasPending &&
+          (e as { code?: string }).code === "stale_recommendation"
+        ) {
+          // Only the server can tell whether another tab saved it meanwhile.
+          try {
+            settle(
+              (await request<{ outcome: Outcome }>(statusPath(p))).outcome,
+            );
+          } catch (statusError) {
+            setMessage((statusError as Error).message);
+          }
         } else {
           setOutcome({
             state: "unknown",
@@ -294,7 +341,7 @@ export function useProposalWorkflow(
         }
       }
     } finally {
-      action.current = false;
+      finishAction();
       setBusy("");
     }
   }
@@ -316,14 +363,12 @@ export function useProposalWorkflow(
     action.current = true;
     setBusy("Checking your proposal");
     try {
-      const v = await request<{ outcome: Outcome }>(
-        "/api/drafts?requestId=" + pending.requestId,
-      );
+      const v = await request<{ outcome: Outcome }>(statusPath(pending));
       settle(v.outcome);
     } catch (e) {
       setMessage((e as Error).message);
     } finally {
-      action.current = false;
+      finishAction();
       setBusy("");
     }
   }
@@ -348,6 +393,7 @@ export function useProposalWorkflow(
   function edit(serviceId: string, change: Partial<Adjustment> | null) {
     if (pending || busy || restoring || storageIssue) return;
     revision.current++;
+    edited.current = true;
     setOutcome(null);
     // A kept suggestion starts from the AI's values; an added service from 1, core.
     const source = recommendation.selection?.items.find(
@@ -402,6 +448,7 @@ export function useProposalWorkflow(
     setReport(null);
     setRecommendation(initial(null));
     setSelected([]);
+    edited.current = false;
     setOutcome(null);
     setMessage("");
     setRestoring(false);

@@ -6,7 +6,10 @@ export function useDemoSession(initialAuthenticated: boolean) {
   const [authenticated, setAuthenticated] = useState(initialAuthenticated),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
-  const expire = () => setAuthenticated(false);
+  const expire = () => {
+    setAuthenticated(false);
+    setMessage("Your access expired. Enter the demo code to continue.");
+  };
   async function login(code: string) {
     setBusy(true);
     setMessage("");

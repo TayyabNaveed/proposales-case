@@ -140,6 +140,11 @@ test("snapshot admission and provider identity/link survive concurrency, conflic
       "https://secure.proposales.com/existing-editor",
     );
     assert.equal(writes, 1);
+    // New requests need live suggestions; the budget is what is under test here.
+    await c.query(
+      `UPDATE "${schema}".recommendation_runs SET expires_at=now()+interval '1 hour' WHERE id=$1`,
+      [admitted.record.id],
+    );
     for (let i = 1; i < 10; i++)
       await second.save(randomUUID(), admitted.record.id, scope, snapshot);
     await assert.rejects(
@@ -265,5 +270,88 @@ test("category assets are pinned before save; restored requests do not read muta
   } finally {
     await db.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
     await db.end();
+  }
+});
+test("an absent request is resolved as expired only once no save can still land", async () => {
+  const schema = "case_test_" + randomBytes(8).toString("hex"),
+    db = createDatabase(),
+    other = createDatabase();
+  try {
+    for (const name of ["001_operations", "010_operation_errors", "003_recommendations_and_drafts"])
+      await db.query(
+        fs
+          .readFileSync("db/migrations/" + name + ".sql", "utf8")
+          .replaceAll("case_workflow", schema),
+      );
+    const recs = createRecommendationStore(db, schema),
+      report = reports[0],
+      scope = "test",
+      run = recorded.recommendations[0] as any;
+    const admitted = await recs.admit(
+      {
+        identity: recommendationIdentity(report, catalogueV2, scope, "deepseek-flash"),
+        report,
+        catalogue: catalogueV2,
+        accessScope: scope,
+      },
+      false,
+    );
+    await recs.finish(admitted.record.id, scope, { result: run });
+    const rec = admitted.record.id,
+      store = createDraftStore(db, schema, 10),
+      snapshot = buildDraftSnapshot(report, run.selection, catalogueV2),
+      saved = randomUUID(),
+      unsaved = randomUUID(),
+      racing = randomUUID();
+    const first = await store.save(saved, rec, scope, snapshot);
+    assert.deepEqual(await store.resolveRequest(unsaved, rec, scope), {
+      snapshot: null,
+      expired: false,
+    });
+    const expire = (sql: string) =>
+      db.query(`UPDATE "${schema}".recommendation_runs SET expires_at=${sql} WHERE id=$1`, [rec]);
+    await expire("now()-interval '1 second'");
+    await assert.rejects(store.save(unsaved, rec, scope, snapshot), /stale_recommendation/);
+    assert.equal((await store.save(saved, rec, scope, snapshot)).id, first.id);
+    assert.deepEqual(await store.resolveRequest(unsaved, rec, scope), {
+      snapshot: null,
+      expired: true,
+    });
+    const found = await store.resolveRequest(saved, rec, scope);
+    assert.equal(found.snapshot?.id, first.id);
+    assert.equal(found.expired, false);
+    // Another scope's recommendation can never save this scope's request.
+    assert.equal((await store.resolveRequest(unsaved, rec, "someone-else")).expired, true);
+
+    // A save that passed the expiry check before expiry still wins the race.
+    await expire("clock_timestamp()+interval '1 second'");
+    const writer = await other.connect();
+    try {
+      await writer.query("BEGIN");
+      await writer.query(
+        `SELECT 1 FROM "${schema}".recommendation_runs WHERE id=$1 FOR SHARE`,
+        [rec],
+      );
+      await writer.query(
+        `INSERT INTO "${schema}".draft_snapshots(id,request_id,recommendation_id,access_scope,snapshot,snapshot_hash) VALUES($1,$2,$3,$4,$5,$6)`,
+        [randomUUID(), racing, rec, scope, JSON.stringify(snapshot), "a".repeat(64)],
+      );
+      let settled = false;
+      const reader = store.resolveRequest(racing, rec, scope).finally(() => {
+        settled = true;
+      });
+      await new Promise((r) => setTimeout(r, 1500));
+      assert.equal(settled, false, "the reader waits for the in-flight save");
+      await writer.query("COMMIT");
+      const result = await reader;
+      assert.equal(result.expired, false);
+      assert.equal(result.snapshot?.requestId, racing);
+    } finally {
+      writer.release();
+    }
+  } finally {
+    await db.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+    await db.end();
+    await other.end();
   }
 });

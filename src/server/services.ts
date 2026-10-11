@@ -122,6 +122,13 @@ export function apiHandlers() {
     async findSnapshot(requestId, scope) {
       return createDraftStore(database()).findRequest(requestId, scope);
     },
+    async resolveRequest(requestId, recommendationId, scope) {
+      return createDraftStore(database()).resolveRequest(
+        requestId,
+        recommendationId,
+        scope,
+      );
+    },
     async draft(id, scope, mode) {
       const companyId = process.env.PROPOSALES_COMPANY_ID,
         apiKey = process.env.PROPOSALES_API_KEY;

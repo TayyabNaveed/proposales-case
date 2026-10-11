@@ -42,7 +42,9 @@ export function BusinessChoice({
     [notes, setNotes] = useState(""),
     [error, setError] = useState("");
   useEffect(() => {
-    dialog.current?.showModal();
+    const element = dialog.current;
+    element?.showModal();
+    return () => element?.close();
   }, []);
   useEffect(() => {
     // One verified website is preselected; the operator can still clear it.

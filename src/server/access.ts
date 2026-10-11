@@ -68,6 +68,16 @@ export function sessionCookieSecure(origin: string | undefined) {
     return false;
   throw new Error("access_unconfigured");
 }
+// Buckets are consumed in order, visitor first, and the first refusal stops. An
+// attempt refused by its own visitor bucket never counts toward the global cap,
+// so one source cannot lock everyone out by exhausting it.
+export async function admitLogin(
+  buckets: { bucket: string; limit: number }[],
+  consume: (bucket: string, limit: number) => Promise<boolean>,
+) {
+  for (const b of buckets) if (!(await consume(b.bucket, b.limit))) return false;
+  return true;
+}
 // Vercel overwrites x-forwarded-for with the client address, so it is trusted only
 // there. Elsewhere one global bucket applies. Addresses are stored only as HMACs.
 export function loginBuckets(

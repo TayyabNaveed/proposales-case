@@ -76,7 +76,7 @@ export function ProposalsList({
             {p.changes.added.length ? ` · added by you ${p.changes.added.map(title).join(", ")}` : ""}
           </p>
           {/* Points to confirm before sending; moot once the client has it. */}
-          {!!p.questions.length && ["draft", "not_created", "unavailable"].includes(p.status) && (
+          {!!p.questions.length && ["draft", "not_created", "outcome_unknown", "unavailable"].includes(p.status) && (
             <div className="principle">
               <h3>To confirm with the client</h3>
               <ul>

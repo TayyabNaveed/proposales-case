@@ -6,7 +6,7 @@ import { createResearchStore } from "../src/server/research.js";
 
 test("failed transaction rollback destroys the client and preserves the original failure in every store", async () => {
   for (const rollbackFails of [false, true]) {
-    for (const stage of ["draft", "recommendation", "research"]) {
+    for (const stage of ["draft", "resolve", "recommendation", "research"]) {
       const original = Error("original query failure");
       const releases: unknown[] = [];
       const client = {
@@ -30,21 +30,23 @@ test("failed transaction rollback destroys the client and preserves the original
       const operation =
         stage === "draft"
           ? createDraftStore(pool).save(id, id, "scope", {} as any)
-          : stage === "recommendation"
-            ? createRecommendationStore(pool).admit(
-                {
-                  accessScope: "scope",
-                  identity: { inputHash: "hash" },
-                } as any,
-                false,
-              )
-            : createResearchStore(pool).admit({
-                scope: "scope",
-                stage: "search",
-                identity: {},
-                input: {},
-                refresh: false,
-              });
+          : stage === "resolve"
+            ? createDraftStore(pool).resolveRequest(id, id, "scope")
+            : stage === "recommendation"
+              ? createRecommendationStore(pool).admit(
+                  {
+                    accessScope: "scope",
+                    identity: { inputHash: "hash" },
+                  } as any,
+                  false,
+                )
+              : createResearchStore(pool).admit({
+                  scope: "scope",
+                  stage: "search",
+                  identity: {},
+                  input: {},
+                  refresh: false,
+                });
       await assert.rejects(operation, (e) => e === original);
       assert.deepEqual(releases, [rollbackFails]);
     }

@@ -12,6 +12,7 @@ export type ProposalStatus =
   | "withdrawn"
   | "replaced"
   | "not_created"
+  | "outcome_unknown"
   | "unavailable";
 export type ProposalRow = {
   snapshotId: string;
@@ -95,7 +96,11 @@ export async function listProposals(
       editorUrl: x.op_state === "confirmed" ? x.editor_url : null,
       liveUrl: null,
       pdfUrl: null,
-      status: x.op_state === "confirmed" ? "unavailable" : "not_created",
+      status: x.op_state === "confirmed"
+        ? "unavailable"
+        : ["claimed", "unknown"].includes(x.op_state)
+          ? "outcome_unknown"
+          : "not_created",
       statusChangedAt: null,
     };
   });

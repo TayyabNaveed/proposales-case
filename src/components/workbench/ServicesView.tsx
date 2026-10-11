@@ -70,6 +70,11 @@ export function ServicesView({
   blocked: boolean;
 }) {
   const rec = flow.recommendation;
+  // Expired suggestions can no longer become a proposal; offer a refresh.
+  const expired =
+    rec.state === "ready" &&
+    !!rec.expiresAt &&
+    Date.parse(rec.expiresAt) <= Date.now();
   const items = presentServices(
     rec.selection?.items.map((i) => ({
       ...i,
@@ -189,7 +194,7 @@ export function ServicesView({
       )}
       {authenticated && (
         <div className="ai-actions">
-          {rec.state !== "ready" && (
+          {(rec.state !== "ready" || expired) && (
             <button
               disabled={blocked || flow.locked}
               onClick={() =>
@@ -200,9 +205,11 @@ export function ServicesView({
             >
               {rec.state === "recorded"
                 ? "Prepare this example"
-                : canRestartRecommendation(rec)
-                  ? "Try suggestions again"
-                  : "Continue to suggestions"}
+                : expired
+                  ? "Refresh expired suggestions"
+                  : canRestartRecommendation(rec)
+                    ? "Try suggestions again"
+                    : "Continue to suggestions"}
             </button>
           )}
           {rec.state === "running" && (

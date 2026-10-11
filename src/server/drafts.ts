@@ -89,7 +89,8 @@ export function createDraftStore(
   if (!/^(case_workflow|case_test_[a-f0-9]+)$/.test(schema))
     throw new Error("invalid_schema");
   const table = `"${schema}".draft_snapshots`,
-    budget = `"${schema}".draft_budgets`;
+    budget = `"${schema}".draft_budgets`,
+    runs = `"${schema}".recommendation_runs`;
   return {
     async get(id: string, scope: string) {
       const r = await pool.query(
@@ -106,6 +107,53 @@ export function createDraftStore(
       );
       return r.rowCount === 1 ? project(r.rows[0]) : null;
     },
+    // Absence alone is not final: another tab may be saving the same request.
+    // Saves hold a share lock on the recommendation; this takes a conflicting
+    // lock, so an in-flight save commits first. Expiry never moves, and save
+    // checks it under the lock, so absent-and-expired means never created.
+    async resolveRequest(
+      requestId: string,
+      recommendationId: string,
+      scope: string,
+    ) {
+      const client = await pool.connect();
+      let discard = false;
+      try {
+        await client.query("BEGIN");
+        const rec = await client.query(
+          `SELECT 1 FROM ${runs} WHERE id=$1 AND access_scope=$2 FOR UPDATE`,
+          [recommendationId, scope],
+        );
+        const found = await client.query(
+          `SELECT ${projection} FROM ${table} WHERE request_id=$1 AND access_scope=$2`,
+          [requestId, scope],
+        );
+        let expired = false;
+        if (found.rowCount !== 1)
+          expired =
+            rec.rowCount !== 1 ||
+            (
+              await client.query(
+                `SELECT state<>'ready' OR expires_at<=clock_timestamp() AS expired FROM ${runs} WHERE id=$1`,
+                [recommendationId],
+              )
+            ).rows[0].expired;
+        await client.query("COMMIT");
+        return {
+          snapshot: found.rowCount === 1 ? project(found.rows[0]) : null,
+          expired,
+        };
+      } catch (e) {
+        try {
+          await client.query("ROLLBACK");
+        } catch {
+          discard = true;
+        }
+        throw e;
+      } finally {
+        client.release(discard);
+      }
+    },
     async save(
       requestId: string,
       recommendationId: string,
@@ -120,9 +168,15 @@ export function createDraftStore(
       let discard = false;
       try {
         await client.query("BEGIN");
+        // Lock first, then read the clock, so resolveRequest cannot slip between.
+        const rec = await client.query(
+          `SELECT 1 FROM ${runs} WHERE id=$1 FOR SHARE`,
+          [recommendationId],
+        );
+        if (rec.rowCount !== 1) throw new Error("recommendation_missing");
         const id = randomUUID();
         const insert = await client.query(
-          `INSERT INTO ${table}(id,request_id,recommendation_id,access_scope,snapshot,snapshot_hash) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(access_scope,request_id) DO NOTHING RETURNING ${projection}`,
+          `INSERT INTO ${table}(id,request_id,recommendation_id,access_scope,snapshot,snapshot_hash) SELECT $1,$2,$3,$4,$5,$6 WHERE EXISTS(SELECT 1 FROM ${runs} WHERE id=$3 AND state='ready' AND expires_at>clock_timestamp()) ON CONFLICT(access_scope,request_id) DO NOTHING RETURNING ${projection}`,
           [
             id,
             requestId,
@@ -146,8 +200,9 @@ export function createDraftStore(
           [scope, requestId],
         );
         const row = existing.rows[0];
+        // No row and no insert: the recommendation expired before this save.
+        if (!row) throw new Error("stale_recommendation");
         if (
-          !row ||
           row.snapshotHash !== hash ||
           row.recommendationId !== recommendationId
         )

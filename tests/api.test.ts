@@ -74,6 +74,9 @@ function setup() {
     async findSnapshot() {
       return { id };
     },
+    async resolveRequest() {
+      return { snapshot: { id }, expired: false };
+    },
     async draft(_id: string, _scope: string, mode: string) {
       if (mode === "create") writes++;
       else reads++;
@@ -255,4 +258,145 @@ test("stale selections and raw internal errors are safe actionable failures", as
     req("/api/recommendations", { reportId: "no-website" }, true),
   );
   assert.ok(!(await r.text()).includes("PRIVATE_DATABASE_PASSWORD"));
+});
+
+test("a request with no scoped snapshot is not started; checking never dispatches a create", async () => {
+  const s = setup();
+  s.deps.findSnapshot = async () => null as any;
+  s.deps.draft = async () => {
+    throw Error("status must not run without a snapshot");
+  };
+  const response = await s.api.draftsGET(
+    req("/api/drafts?requestId=" + id, undefined, true),
+  );
+  assert.equal(response.status, 200);
+  const value = await response.json();
+  assert.equal(value.snapshot, null);
+  assert.equal(value.outcome.state, "not_started");
+  assert.equal(value.outcome.snapshotId, "");
+  assert.match(value.outcome.message, /retry.*saved request/i);
+  assert.equal(s.writes(), 0);
+  assert.equal(
+    (await s.api.draftsGET(req("/api/drafts?requestId=" + id))).status,
+    401,
+  );
+});
+
+test("missing snapshot IDs still fail and lookup failures never authorise retry", async () => {
+  const s = setup();
+  s.deps.getSnapshot = async () => {
+    throw Error("draft_missing");
+  };
+  const missing = await s.api.draftsGET(
+    req("/api/drafts?id=" + id, undefined, true),
+  );
+  assert.equal((await missing.json()).error, "draft_missing");
+  s.deps.findSnapshot = async () => {
+    throw Error("database_unavailable");
+  };
+  const failed = await s.api.draftsGET(
+    req("/api/drafts?requestId=" + id, undefined, true),
+  );
+  assert.equal(failed.ok, false);
+  assert.equal((await failed.json()).outcome, undefined);
+  assert.equal(s.writes(), 0);
+});
+
+test("restored unsaved request retries with its original ID, scope and approved text", async () => {
+  const { restorePendingGeneration, isSettledOutcome } =
+    await import("../src/domain/workbench.js");
+  const saved = {
+    requestId: id,
+    recommendationId: id,
+    selections: [
+      { serviceId: "website-base", quantity: 1, disposition: "core" },
+    ],
+    presentation: {
+      intro: "Our agreed first step.",
+      recipient: { companyName: "Example Studio" },
+    },
+  };
+  const pending = restorePendingGeneration(JSON.stringify(saved))!;
+  const s = setup();
+  s.deps.findSnapshot = async () => null as any;
+  const status = await s.api.draftsGET(
+    req("/api/drafts?requestId=" + pending.requestId, undefined, true),
+  );
+  const { outcome } = await status.json();
+  assert.equal(outcome.state, "not_started");
+  assert.equal(isSettledOutcome(outcome), false);
+  let received: unknown[] = [];
+  s.deps.snapshot = async (...args: unknown[]) => {
+    received = args;
+    return { id, snapshot: { coreOneTimeMinor: 120000 } };
+  };
+  const retried = await s.api.draftsPOST(req("/api/drafts", pending, true));
+  assert.equal(retried.status, 200);
+  assert.equal(received[0], saved.requestId);
+  assert.equal(received[1], saved.recommendationId);
+  assert.deepEqual(received[2], saved.selections);
+  assert.deepEqual(received[4], saved.presentation);
+  assert.equal(s.writes(), 1);
+});
+
+test("a saved request whose suggestions expired is settled authoritatively and never dispatched", async () => {
+  const { isSettledOutcome } = await import("../src/domain/workbench.js");
+  const s = setup();
+  const rec = "00000000-0000-4000-8000-000000000002";
+  let asked: unknown[] = [];
+  s.deps.resolveRequest = async (...args: unknown[]) => {
+    asked = args;
+    return { snapshot: null, expired: true } as any;
+  };
+  s.deps.findSnapshot = async () => {
+    throw Error("an unqualified lookup must not decide this request");
+  };
+  s.deps.draft = async () => {
+    throw Error("status must not run without a snapshot");
+  };
+  const response = await s.api.draftsGET(
+    req(`/api/drafts?requestId=${id}&recommendationId=${rec}`, undefined, true),
+  );
+  assert.equal(response.status, 200);
+  const value = await response.json();
+  assert.equal(value.snapshot, null);
+  assert.equal(value.outcome.state, "expired");
+  assert.match(value.outcome.message, /nothing was created/);
+  assert.equal(isSettledOutcome(value.outcome), true);
+  assert.equal(asked[0], id);
+  assert.equal(asked[1], rec);
+  assert.equal(s.writes(), 0);
+});
+
+test("a resolved request that another tab saved reports that snapshot's status", async () => {
+  const s = setup();
+  s.deps.resolveRequest = async () =>
+    ({ snapshot: { id }, expired: false }) as any;
+  const value = await (
+    await s.api.draftsGET(
+      req(
+        `/api/drafts?requestId=${id}&recommendationId=${id}`,
+        undefined,
+        true,
+      ),
+    )
+  ).json();
+  assert.equal(value.outcome.state, "confirmed");
+  s.deps.resolveRequest = async () =>
+    ({ snapshot: null, expired: false }) as any;
+  const absent = await (
+    await s.api.draftsGET(
+      req(
+        `/api/drafts?requestId=${id}&recommendationId=${id}`,
+        undefined,
+        true,
+      ),
+    )
+  ).json();
+  assert.equal(absent.outcome.state, "not_started");
+  const mixed = await s.api.draftsGET(
+    req(`/api/drafts?id=${id}&recommendationId=${id}`, undefined, true),
+  );
+  assert.equal((await mixed.json()).error, "invalid_input");
+  assert.equal(s.writes(), 0);
 });

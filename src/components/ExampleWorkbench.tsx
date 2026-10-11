@@ -1,8 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { reports, reportSchema, type ReportV2 } from "../domain/reports";
-import { findSavedGeneration, canAdoptReport,
+import {
+  findSavedGeneration,
+  canAdoptReport,
   isSettledOutcome,
+  isProposalStorageKey,
+  UnreadableGeneration,
+  discardUnreadableGeneration,
 } from "../domain/workbench";
 import { apiRequest } from "./workbench/api";
 import { ResearchPanel } from "./ResearchPanel";
@@ -89,25 +94,34 @@ export function ExampleWorkbench({
   const [saved, setSaved] =
       useState<ReturnType<typeof findSavedGeneration>>(null),
     [recoveryMessage, setRecoveryMessage] = useState(""),
-    [recoveryBlocked, setRecoveryBlocked] = useState(true);
+    [recoveryBlocked, setRecoveryBlocked] = useState(true),
+    [unreadable, setUnreadable] = useState<UnreadableGeneration | null>(null);
   useEffect(() => {
     const scan = () => {
       try {
         setSaved(findSavedGeneration(localStorage));
+        setUnreadable(null);
         setRecoveryBlocked(false);
-      } catch {
+      } catch (error) {
+        setSaved(null);
         setRecoveryBlocked(true);
+        setUnreadable(error instanceof UnreadableGeneration ? error : null);
         setRecoveryMessage(
-          "Saved proposal recovery could not be read. Enable browser storage before creating another proposal.",
+          error instanceof UnreadableGeneration
+            ? error.message
+            : "Saved proposal recovery could not be read. Enable browser storage before creating another proposal.",
         );
       }
     };
+    const storageChanged = (event: StorageEvent) => {
+      if (isProposalStorageKey(event.key)) scan();
+    };
     scan();
     window.addEventListener("case-generation-changed", scan);
-    window.addEventListener("storage", scan);
+    window.addEventListener("storage", storageChanged);
     return () => {
       window.removeEventListener("case-generation-changed", scan);
-      window.removeEventListener("storage", scan);
+      window.removeEventListener("storage", storageChanged);
     };
   }, []);
   useEffect(() => {
@@ -115,15 +129,22 @@ export function ExampleWorkbench({
     let cancelled = false;
     setRecoveryBlocked(true);
     // A saved request whose proposal already exists has done its job: release it
-    // quietly. Only an unfinished or uncertain one is restored.
+    // quietly. An unfinished, uncertain or expired one is restored, so the
+    // operator sees its outcome next to the scope they approved.
     apiRequest<{ outcome: { state: string; providerId?: string } }>(
-      "/api/drafts?requestId=" + encodeURIComponent(saved.request.requestId),
+      "/api/drafts?requestId=" +
+        encodeURIComponent(saved.request.requestId) +
+        "&recommendationId=" +
+        encodeURIComponent(saved.request.recommendationId),
       undefined,
       session.expire,
     )
       .then((status) => {
         if (cancelled) return null;
-        if (isSettledOutcome(status.outcome)) {
+        if (
+          isSettledOutcome(status.outcome) &&
+          status.outcome.state !== "expired"
+        ) {
           localStorage.removeItem("case-generation:" + saved.reportId);
           window.dispatchEvent(new Event("case-generation-changed"));
           setRecoveryBlocked(false);
@@ -341,9 +362,30 @@ export function ExampleWorkbench({
           </div>
         </aside>
         <main className="content">
-          {recoveryMessage && saved && (
+          {recoveryMessage && (
             <p role="status" className="recovery-note">
               {recoveryMessage}
+              {unreadable && (
+                <button
+                  onClick={async () => {
+                    try {
+                      await discardUnreadableGeneration(
+                        localStorage,
+                        navigator.locks,
+                        unreadable,
+                      );
+                      setRecoveryMessage("");
+                      window.dispatchEvent(
+                        new Event("case-generation-changed"),
+                      );
+                    } catch (error) {
+                      setRecoveryMessage((error as Error).message);
+                    }
+                  }}
+                >
+                  Discard unreadable recovery copy
+                </button>
+              )}
             </p>
           )}
           <section

@@ -71,6 +71,11 @@ export function createApiHandlers(
       requestId: string,
       scope: string,
     ): Promise<StoredDraftSnapshot | null>;
+    resolveRequest(
+      requestId: string,
+      recommendationId: string,
+      scope: string,
+    ): Promise<{ snapshot: StoredDraftSnapshot | null; expired: boolean }>;
     draft(
       id: string,
       scope: string,
@@ -140,12 +145,50 @@ export function createApiHandlers(
         const scope = await authorise(req, "draft-read", false),
           q = new URL(req.url).searchParams,
           id = q.get("id"),
-          requestId = q.get("requestId");
-        if ((!id && !requestId) || (id && requestId))
+          requestId = q.get("requestId"),
+          recommendationId = q.get("recommendationId");
+        if (
+          (!id && !requestId) ||
+          (id && requestId) ||
+          (id && recommendationId)
+        )
           throw new Error("invalid_input");
-        const saved = id
-          ? await deps.getSnapshot(z.uuid().parse(id), scope)
-          : await deps.findSnapshot(z.uuid().parse(requestId), scope);
+        // With its recommendation, an absent request can be resolved for good.
+        const resolved =
+          requestId && recommendationId
+            ? await deps.resolveRequest(
+                z.uuid().parse(requestId),
+                z.uuid().parse(recommendationId),
+                scope,
+              )
+            : null;
+        if (resolved?.expired)
+          return json({
+            snapshot: null,
+            outcome: {
+              state: "expired",
+              snapshotId: "",
+              message:
+                "These suggestions expired before the saved request reached the server, so nothing was created. Request fresh suggestions to continue.",
+            },
+          });
+        const saved = resolved
+          ? resolved.snapshot
+          : id
+            ? await deps.getSnapshot(z.uuid().parse(id), scope)
+            : await deps.findSnapshot(z.uuid().parse(requestId), scope);
+        // A browser saves its request before POST. A scoped lookup can therefore
+        // legitimately find nothing. This read must never dispatch a creation.
+        if (!saved && requestId)
+          return json({
+            snapshot: null,
+            outcome: {
+              state: "not_started",
+              snapshotId: "",
+              message:
+                "This request has not been saved on the server. Retry the saved request to continue.",
+            },
+          });
         if (!saved) throw new Error("draft_missing");
         return json({
           snapshot: saved,

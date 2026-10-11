@@ -31,7 +31,8 @@ export function CreateProposalDialog({
     [email, setEmail] = useState(emails[0] ?? ""),
     [error, setError] = useState("");
   useEffect(() => {
-    dialog.current?.showModal();
+    const element = dialog.current;
+    element?.showModal();
     let cancelled = false;
     apiRequest<{ intro: Intro }>(
       "/api/intro",
@@ -51,6 +52,7 @@ export function CreateProposalDialog({
       .finally(() => !cancelled && setDrafting(false));
     return () => {
       cancelled = true;
+      element?.close();
     };
   }, []);
   function submit() {

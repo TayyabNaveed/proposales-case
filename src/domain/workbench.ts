@@ -23,20 +23,62 @@ export const adjustmentSchema = z
 export type Adjustment = z.infer<typeof adjustmentSchema>[number];
 export const shouldSwitchExample = (current: string, next: string) =>
   current !== next;
-export function restorePendingGeneration(saved: string | null) {
-  return saved === null
-    ? null
-    : z
-        .object({
-          requestId: z.uuid(),
-          recommendationId: z.uuid(),
-          selections: adjustmentSchema,
-          // Saved with the request so a retry sends exactly the same text.
-          presentation: proposalPresentationSchema.optional(),
-        })
-        .strict()
-        .parse(JSON.parse(saved));
+export class UnreadableGeneration extends Error {
+  constructor(
+    readonly saved: string,
+    readonly storageKey?: string,
+  ) {
+    super(
+      "The saved proposal request is unreadable. Check Proposales before discarding this browser recovery copy.",
+    );
+  }
 }
+export function restorePendingGeneration(
+  saved: string | null,
+  storageKey?: string,
+) {
+  if (saved === null) return null;
+  try {
+    return z
+      .object({
+        requestId: z.uuid(),
+        recommendationId: z.uuid(),
+        selections: adjustmentSchema,
+        presentation: proposalPresentationSchema.optional(),
+      })
+      .strict()
+      .parse(JSON.parse(saved));
+  } catch {
+    throw new UnreadableGeneration(saved, storageKey);
+  }
+}
+// Only discard the exact unreadable copy the operator reviewed. A replacement
+// from another tab must be scanned again instead of deleted.
+export async function discardUnreadableGeneration(
+  storage: Pick<Storage, "getItem" | "removeItem">,
+  locks: Parameters<typeof admitBrowserGeneration>[1],
+  problem: UnreadableGeneration,
+) {
+  if (!locks)
+    throw Error(
+      "This browser cannot safely discard proposal recovery. Use a browser with Web Locks support.",
+    );
+  let discarded = false;
+  await locks.request("case-proposal-admission", () => {
+    if (
+      !problem.storageKey ||
+      !problem.storageKey.startsWith("case-generation:")
+    )
+      return;
+    if (storage.getItem(problem.storageKey) !== problem.saved) return;
+    storage.removeItem(problem.storageKey);
+    if (storage.getItem(problem.storageKey) !== null)
+      throw Error("Browser storage could not discard the recovery copy.");
+    discarded = true;
+  });
+  return discarded;
+}
+
 export function canReleaseRejectedGeneration(
   code: string | undefined,
   previouslyPending: boolean,
@@ -103,7 +145,7 @@ export function findSavedGeneration(
     .filter((k): k is string => !!k && k.startsWith("case-generation:"))
     .sort();
   for (const key of keys) {
-    const request = restorePendingGeneration(storage.getItem(key));
+    const request = restorePendingGeneration(storage.getItem(key), key);
     if (request)
       return { reportId: key.slice("case-generation:".length), request };
   }
@@ -200,10 +242,18 @@ export function serviceAvailability(
 export function isSettledOutcome(
   o: { state: string; providerId?: string } | null | undefined,
 ) {
-  // A rejection is also settled: nothing was created, so a new request is safe.
+  // A rejection or expiry is also settled: nothing was or can be created.
   return (
     o?.state === "rejected" ||
+    o?.state === "expired" ||
     (!!o?.providerId &&
       (o.state === "confirmed" || o.state === "verification_failed"))
+  );
+}
+
+export function isProposalStorageKey(key: string | null, reportId?: string) {
+  if (key === null) return true;
+  return ["case-generation:", "case-recommendation:"].some((prefix) =>
+    reportId ? key === prefix + reportId : key.startsWith(prefix),
   );
 }

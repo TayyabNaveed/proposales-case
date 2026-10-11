@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { money } from "../../domain/catalogue";
 import type { ProposalWorkflow } from "./useProposalWorkflow";
 import { CreateProposalDialog } from "./CreateProposalDialog";
@@ -13,6 +13,9 @@ export function ProposalView({
   blocked: boolean;
 }) {
   const [creating, setCreating] = useState(false);
+  useEffect(() => {
+    if (!authenticated) setCreating(false);
+  }, [authenticated]);
   return (
     // Once services are suggested, the next step stays docked at the bottom of
     // the screen, with the business name and totals for context.
@@ -20,7 +23,7 @@ export function ProposalView({
       className={"review" + (flow.recommendation.selection ? " docked" : "")}
       aria-label="Create and review"
     >
-      {creating && flow.report && (
+      {creating && authenticated && flow.report && (
         <CreateProposalDialog
           flow={flow}
           onExpired={flow.expire}
@@ -117,6 +120,13 @@ export function ProposalView({
               <p role="alert">
                 Proposales rejected this proposal, so nothing was created.
                 Adjust the scope if needed and create it again.
+              </p>
+            )}
+            {flow.outcome?.state === "expired" && (
+              <p role="alert">
+                These suggestions expired before the saved request reached the
+                server, so nothing was created. Request fresh suggestions to
+                continue.
               </p>
             )}
             {flow.outcome?.state === "verification_failed" && (

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { z } from "zod";
 import {
+  admitLogin,
   checkCode,
   loginBuckets,
   makeSession,
@@ -19,13 +20,10 @@ export async function POST(req: Request) {
     const secret = process.env.SESSION_SECRET;
     if (!secret || !process.env.REVIEWER_ACCESS_CODE)
       throw new Error("access_unconfigured");
-    // Every bucket is consumed so a blocked visitor still counts toward the global cap.
-    const allowed = await Promise.all(
-      loginBuckets(req, secret).map((b) =>
-        consumeLoginAttempt(database(), b.bucket, "case_workflow", b.limit),
-      ),
+    const allowed = await admitLogin(loginBuckets(req, secret), (bucket, limit) =>
+      consumeLoginAttempt(database(), bucket, "case_workflow", limit),
     );
-    if (allowed.includes(false))
+    if (!allowed)
       return Response.json({ error: "too_many_attempts" }, { status: 429 });
     const { code } = z
       .object({ code: z.string().max(200) })

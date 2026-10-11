@@ -12,6 +12,7 @@ export const statusLabel: Record<ProposalStatus, string> = {
   withdrawn: "Withdrawn",
   replaced: "Replaced by a newer version",
   not_created: "Not created in Proposales",
+  outcome_unknown: "Outcome unknown — check Proposales",
   unavailable: "Status unavailable",
 };
 // Short labels for the sidebar, in the order a proposal moves through them.
@@ -24,6 +25,7 @@ export const statusOrder: Array<[ProposalStatus, string]> = [
   ["withdrawn", "Withdrawn"],
   ["replaced", "Replaced"],
   ["not_created", "Not created"],
+  ["outcome_unknown", "Outcome unknown"],
   ["unavailable", "Status unavailable"],
 ];
 
@@ -61,7 +63,8 @@ export function useProposals(
     if (authenticated) void load();
   }, [authenticated, reloadKey]);
   const counts = new Map<ProposalStatus, number>();
-  for (const r of rows ?? []) counts.set(r.status, (counts.get(r.status) ?? 0) + 1);
+  for (const r of rows ?? [])
+    counts.set(r.status, (counts.get(r.status) ?? 0) + 1);
   return { rows, loading, error, load, counts };
 }
 export type Proposals = ReturnType<typeof useProposals>;

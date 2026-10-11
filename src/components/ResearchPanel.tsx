@@ -66,6 +66,7 @@ export function ResearchPanel({
   };
   useEffect(() => {
     if (!authenticated || !restoreAllowed) {
+      if (!authenticated) setChoosing(false);
       setRestoring(false);
       return;
     }
@@ -393,7 +394,7 @@ export function ResearchPanel({
           ))}
         </details>
       )}
-      {choosing && identify?.result && search?.result && (
+      {authenticated && choosing && identify?.result && search?.result && (
         <BusinessChoice
           businessName={businessName}
           identify={identify}

@@ -51,9 +51,16 @@ export function keepSupported(output: IntroOutput, input: IntroInput) {
     ...input.services.map((s) => s.ref),
     ...(input.followUp ? ["notes"] : []),
   ]);
-  const kept = output.sentences
-    .filter((s) => s.refs.every((r) => allowed.has(r)))
-    .slice(0, 5);
+  const kept: IntroOutput["sentences"] = [];
+  let length = 0;
+  for (const sentence of output.sentences.filter((s) =>
+    s.refs.every((r) => allowed.has(r)),
+  )) {
+    const size = sentence.text.trim().length + (kept.length ? 1 : 0);
+    if (kept.length === 5 || length + size > 1500) break;
+    kept.push(sentence);
+    length += size;
+  }
   return {
     text: kept.map((s) => s.text.trim()).join(" "),
     sentences: kept,

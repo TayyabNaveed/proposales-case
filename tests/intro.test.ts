@@ -40,3 +40,41 @@ test("sentences without valid references are dropped; what remains is joined in 
   assert.equal(r.text, "We are Metascalers. We noticed customers ask about opening hours. We suggest a focused first step.");
   assert.equal(r.dropped, 2);
 });
+
+test("draft introductions stop at whole supported sentences within the presentation limit", async () => {
+  const { introInput, keepSupported } = await import("../src/domain/intro.js");
+  const { proposalPresentationSchema } =
+    await import("../src/domain/offers.js");
+  const input = introInput(snap);
+  const sentences = [749, 750, 200].map((n) => ({
+    text: "a".repeat(n - 1) + ".",
+    refs: ["agency"],
+  }));
+  const result = keepSupported({ sentences }, input);
+  assert.equal(result.text.length, 1500);
+  assert.deepEqual(result.sentences, sentences.slice(0, 2));
+  assert.equal(result.dropped, 1);
+  assert.doesNotThrow(() =>
+    proposalPresentationSchema.parse({ intro: result.text }),
+  );
+  const long = keepSupported(
+    {
+      sentences: [800, 800, 20].map((n) => ({
+        text: "b".repeat(n - 1) + ".",
+        refs: ["agency"],
+      })),
+    },
+    input,
+  );
+  assert.equal(long.text.length, 800);
+  assert.equal(long.sentences.length, 1);
+});
+
+test("bounded introduction validation has a new cache identity without rewriting the old prompt", async () => {
+  const { activePrompts } = await import("../src/prompts/active.js");
+  const { definition: previous } = await import("../src/prompts/proposal-intro/v1.js");
+  const { promptProvenance } = await import("../src/server/prompt-provenance.js");
+  assert.notEqual(promptProvenance(activePrompts.intro).validationVersion, promptProvenance(previous).validationVersion);
+  assert.equal(previous.validationVersion, "intro-validation-1");
+  assert.equal(activePrompts.intro.system, previous.system);
+});

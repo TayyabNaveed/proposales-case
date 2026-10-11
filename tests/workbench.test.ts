@@ -201,8 +201,87 @@ test("a saved proposal request is released once the server knows the proposal ex
   assert.equal(isSettledOutcome({ state: "verification_failed", providerId: id }), true);
   // Proposales refused it: nothing exists, so creating again is safe.
   assert.equal(isSettledOutcome({ state: "rejected" }), true);
+  assert.equal(isSettledOutcome({ state: "expired" }), true);
   for (const state of ["unknown", "claimed", "not_started"])
     assert.equal(isSettledOutcome({ state }), false);
   assert.equal(isSettledOutcome({ state: "confirmed" }), false);
   assert.equal(isSettledOutcome(null), false);
+});
+
+test("unreadable recovery is distinct from unavailable storage and discard preserves concurrent replacements", async () => {
+  const mod = await import("../src/domain/workbench.js");
+  const data = new Map([["case-generation:no-website", "{broken"]]);
+  const storage = {
+    get length() {
+      return data.size;
+    },
+    key: (i: number) => [...data.keys()][i] ?? null,
+    getItem: (key: string) => data.get(key) ?? null,
+    removeItem: (key: string) => {
+      data.delete(key);
+    },
+  };
+  let problem: any;
+  try {
+    mod.findSavedGeneration(storage);
+  } catch (e) {
+    problem = e;
+  }
+  assert.ok(problem instanceof mod.UnreadableGeneration);
+  assert.equal(problem.storageKey, "case-generation:no-website");
+  let lockName = "";
+  const locks = {
+    async request(name: string, callback: () => void | Promise<void>) {
+      lockName = name;
+      return callback();
+    },
+  };
+  data.set(problem.storageKey, "replacement");
+  assert.equal(
+    await mod.discardUnreadableGeneration(storage, locks, problem),
+    false,
+  );
+  assert.equal(data.get(problem.storageKey), "replacement");
+  data.set(problem.storageKey, "{broken");
+  assert.equal(
+    await mod.discardUnreadableGeneration(storage, locks, problem),
+    true,
+  );
+  assert.equal(data.size, 0);
+  assert.equal(lockName, "case-proposal-admission");
+  await assert.rejects(
+    mod.discardUnreadableGeneration(storage, undefined, problem),
+    /browser/i,
+  );
+  const denied = Error("storage denied");
+  assert.throws(
+    () =>
+      mod.findSavedGeneration({
+        ...storage,
+        get length(): number {
+          throw denied;
+        },
+      }),
+    (e) => e === denied,
+  );
+});
+
+test("proposal recovery only reacts to relevant storage keys", async () => {
+  const { isProposalStorageKey } = await import("../src/domain/workbench.js");
+  assert.equal(isProposalStorageKey("theme"), false);
+  assert.equal(isProposalStorageKey("case-research-report"), false);
+  assert.equal(
+    isProposalStorageKey("case-generation:no-website", "enquiry-flow"),
+    false,
+  );
+  assert.equal(
+    isProposalStorageKey("case-generation:no-website", "no-website"),
+    true,
+  );
+  assert.equal(
+    isProposalStorageKey("case-recommendation:no-website", "no-website"),
+    true,
+  );
+  assert.equal(isProposalStorageKey("case-generation:no-website"), true);
+  assert.equal(isProposalStorageKey(null), true); // localStorage.clear
 });

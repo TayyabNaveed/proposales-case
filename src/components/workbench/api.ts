@@ -1,4 +1,5 @@
 export const explanations: Record<string, string> = {
+  temporarily_unavailable: "This service is temporarily unavailable. Try again shortly; saved work is preserved.",
   // Provider failure categories (server/provider-errors.ts).
   search_credits_exhausted:
     "Web search credits are used up for this billing period. Top up the Tavily plan to research new businesses; saved work and examples still open.",
@@ -74,21 +75,34 @@ export async function apiRequest<T>(
   body: unknown | undefined,
   onExpired: () => void,
 ): Promise<T> {
-  const r = await fetch(
-    path,
-    body === undefined
-      ? { cache: "no-store" }
-      : {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
-  );
-  const value = await r.json();
-  if (!r.ok) {
-    if (r.status === 401) onExpired();
-    throw new WorkbenchError(value.error);
+  let r: Response;
+  try {
+    r = await fetch(
+      path,
+      body === undefined
+        ? { cache: "no-store" }
+        : {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          },
+    );
+  } catch {
+    throw new WorkbenchError("temporarily_unavailable");
   }
+  if (r.status === 401) onExpired();
+  let value;
+  try {
+    value = await r.json();
+  } catch {
+    throw new WorkbenchError("temporarily_unavailable");
+  }
+  if (!r.ok)
+    throw new WorkbenchError(
+      typeof value?.error === "string"
+        ? value.error
+        : "temporarily_unavailable",
+    );
   return value as T;
 }
 export function readSaved(key: string) {
