@@ -340,18 +340,24 @@ function ServiceCatalogue({
             flow.report!,
             chosen.filter((id) => id !== service.id),
           );
+          // Shown as unavailable, with the reason first, rather than a silent
+          // checkbox that will not tick.
+          const unavailable = !pick && !state.available,
+            reasonId = "unavailable-" + service.id;
           return (
             <article
-              className={"service other " + (pick ? "chosen" : "")}
+              className={
+                "service other " +
+                (pick ? "chosen" : unavailable ? "unavailable" : "")
+              }
               key={service.id}
             >
               <label className="service-heading">
                 <input
                   type="checkbox"
                   checked={!!pick}
-                  disabled={
-                    blocked || flow.locked || (!pick && !state.available)
-                  }
+                  aria-describedby={unavailable ? reasonId : undefined}
+                  disabled={blocked || flow.locked || unavailable}
                   onChange={(e) =>
                     flow.edit(service.id, e.target.checked ? {} : null)
                   }
@@ -366,6 +372,11 @@ function ServiceCatalogue({
                   </small>
                 </span>
               </label>
+              {unavailable && (
+                <p className="unavailable-reason" id={reasonId}>
+                  {state.reason}
+                </p>
+              )}
               <p>{service.deliverables.join(" · ")}</p>
               {pick ? (
                 <>
@@ -377,11 +388,7 @@ function ServiceCatalogue({
                     disabled={blocked || flow.locked}
                   />
                 </>
-              ) : (
-                !state.available && (
-                  <small className="prerequisite">{state.reason}</small>
-                )
-              )}
+              ) : null}
             </article>
           );
         })}

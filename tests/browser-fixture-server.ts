@@ -189,7 +189,7 @@ createServer(async (req, res) => {
       slowSelection = which === "busy-storage";
       expireReport = which === "expiry-choice";
       let values: Record<string, string> = {};
-      if (["unreadable", "unsaved", "expired-unsaved", "expiry-intro", "editable", "busy-storage"].includes(which ?? "")) {
+      if (["unreadable", "unsaved", "expired-unsaved", "recipient-mismatch", "expiry-intro", "editable", "busy-storage"].includes(which ?? "")) {
         const rec = makeRecommendation(reports[0]);
         if (which === "expired-unsaved") rec.expiresAt = new Date(Date.now() - 1000).toISOString();
         const request = { requestId: randomUUID(), recommendationId: rec.id,
@@ -199,6 +199,21 @@ createServer(async (req, res) => {
         values = { "case-recommendation:no-website": rec.id };
         if (which === "unreadable") values["case-generation:no-website"] = "{broken";
         if (which === "unsaved" || which === "expired-unsaved") values["case-generation:no-website"] = JSON.stringify(request);
+        // Proposales reused an existing contact with this email (observed 11 October).
+        if (which === "recipient-mismatch") {
+          drafts.set(request.requestId, {
+            snapshot: { snapshot: { report: reports[0] } },
+            outcome: {
+              state: "verification_failed",
+              snapshotId: "synthetic",
+              providerId: randomUUID(),
+              editorUrl: "https://secure.proposales.com/synthetic-browser-qa",
+              issues: ["recipient"],
+              message: "A draft exists, but verification or its editor link is incomplete. Inspect the existing proposal; do not recreate it.",
+            },
+          });
+          values["case-generation:no-website"] = JSON.stringify(request);
+        }
       } else if (which === "pending-vs-research") {
         const a = makeReport(makeSearch("Pending business A")),
           b = makeReport(makeSearch("Latest business B")),

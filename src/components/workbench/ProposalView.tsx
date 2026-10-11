@@ -13,6 +13,9 @@ export function ProposalView({
   blocked: boolean;
 }) {
   const [creating, setCreating] = useState(false);
+  const outcomeAlert = ["rejected", "expired", "verification_failed"].includes(
+    flow.outcome?.state ?? "",
+  );
   useEffect(() => {
     if (!authenticated) setCreating(false);
   }, [authenticated]);
@@ -131,8 +134,9 @@ export function ProposalView({
             )}
             {flow.outcome?.state === "verification_failed" && (
               <p role="alert">
-                A proposal exists, but we couldn’t confirm all its details.
-                Inspect that proposal before proceeding.
+                {flow.outcome.issues?.includes("recipient")
+                  ? "Created, but Proposales shows a different recipient: it already had a contact with this email and kept that contact’s company. Check the recipient in Proposales."
+                  : "A proposal exists, but we couldn’t confirm all its details. Inspect that proposal before proceeding."}
               </p>
             )}
             {flow.outcome?.providerId && (
@@ -154,7 +158,11 @@ export function ProposalView({
             : "Creates an unsent draft. You review and send it in Proposales."}
         </small>
         <p role="status" aria-live="polite" className="action-status">
-          {flow.busy || flow.message}
+          {flow.busy ||
+            // The alert above already explains this outcome; say it once.
+            (outcomeAlert && flow.message === flow.outcome?.message
+              ? ""
+              : flow.message)}
         </p>
       </div>
     </section>
