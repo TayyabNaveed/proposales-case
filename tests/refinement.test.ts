@@ -401,3 +401,39 @@ test("stalled recommendations allow deliberate restart only after the server win
   assert.equal(canAdoptReport("live-A", "live-B"), false);
   assert.equal(canAdoptReport("live-A", "live-A"), true);
 });
+test("an operator-added service keeps its attribution through the tamper check and has no AI reason", async () => {
+  const { buildDraftSnapshot } = await import("../src/domain/offers.js");
+  const rec = recordedFor(reports[0].id).selection;
+  const snap = {
+    ...buildDraftSnapshot(
+      reports[0],
+      {
+        ...rec,
+        items: [
+          ...rec.items,
+          {
+            serviceId: "ai-visibility",
+            quantity: 1,
+            disposition: "optional" as const,
+            findingIds: [],
+            rationale: "" as const,
+            addedBy: "operator" as const,
+          },
+        ],
+      },
+      catalogueV2,
+    ),
+    compositionVersion: "proposal-2" as const,
+  };
+  const maps = snap.items.map((i, n) => ({
+    serviceId: i.serviceId,
+    productId: n + 10,
+    variationId: n + 20,
+    imageUuid: "00000000-0000-4000-8000-000000000001",
+  }));
+  const payload = buildPricedPayload(snap, maps, "1", "op");
+  const added = payload.blocks.find((b) => b.title === "AI visibility foundations")!;
+  assert.ok(added, "operator item present");
+  assert.doesNotMatch(added.description, /Why:/);
+  assert.ok(payload.blocks.some((b) => /Why:/.test(b.description)));
+});

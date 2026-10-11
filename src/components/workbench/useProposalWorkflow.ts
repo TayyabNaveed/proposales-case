@@ -333,9 +333,10 @@ export function useProposalWorkflow(
     if (pending || busy || restoring || storageIssue) return;
     revision.current++;
     setOutcome(null);
-    const source = recommendation.selection!.items.find(
+    // A kept suggestion starts from the AI's values; an added service from 1, core.
+    const source = recommendation.selection?.items.find(
       (i) => i.serviceId === serviceId,
-    )!;
+    ) ?? { quantity: 1, disposition: "core" as const };
     setSelected((items) =>
       change === null
         ? items.filter((i) => i.serviceId !== serviceId)

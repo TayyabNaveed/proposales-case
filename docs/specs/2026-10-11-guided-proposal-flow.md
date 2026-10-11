@@ -1,6 +1,6 @@
 # Guided proposal flow
 
-Status: approved direction, 11 October 2026. Phase 1 implemented (awaiting review); later phases pending. Each phase is reviewed before it is committed. How this spec was produced is described in [WORKFLOW](../WORKFLOW.md).
+Status: approved direction, 11 October 2026. Phase 1 implemented; phase 2 in progress. Each phase is reviewed before it is committed. How this spec was produced is described in [WORKFLOW](../WORKFLOW.md).
 
 ## Problem
 
@@ -39,6 +39,17 @@ Non-goals: sending from this app (the Proposales API has no send or status-chang
 - **The website is the operator's fact.** A picked or typed website marks the website present, attributed "confirmed by operator". **Continue** records "no website selected": website-foundation services become eligible and are labelled as based on that choice. The selector never has to guess between building and improving.
 - **Suggestions are suggestions.** Every AI output arrives with its evidence and can be removed. The AI owns no price, no external write and no final decision.
 - **Contacts are never invented.** A suggested email must appear in the chosen business's sources, and generic role addresses on the business's own domain are preferred. Otherwise the field is empty.
+
+### Decisions added during phase 1 review
+
+- **Other services.** Below the AI suggestions, a collapsed and unchecked list offers the rest of the catalogue. The operator can add any of them. Code still enforces prerequisites and overlaps. Added items are labelled "Added by you" and carry no AI reason. The operator may also change AI quantities within catalogue bounds.
+- **Neutral feedback log.** Record which services were added from the list and which suggestions were removed, without interpreting either. An addition can mean a missed need or a service offered to everyone.
+- **Client notes.** An optional field in the choose dialog ("Notes from the client"). The notes are an attributed operator source: they inform the report, the suggestions and the introduction. They are never required.
+- **Proposal text.**
+  - The title has no demo wording.
+  - Review questions are shown in the app, not in the proposal.
+  - A short AI introduction states who we are, what we noticed and what we propose. It is written as a follow-up when notes exist and as a first approach otherwise. Each sentence must cite a verified finding, a client note or a chosen service.
+- **Usage line.** While logged in, show today's and this month's searches, Tavily credits, AI calls and tokens, read from the stored runs.
 
 ## Contracts (new or changed)
 
@@ -80,7 +91,7 @@ Every AI call is already stored with its prompt version, fingerprints, model, ti
 | Phase | Scope | Acceptance |
 |---|---|---|
 | 1 | Identify → choose dialog → report → services | Evaluation sets pass at or above the identity baseline. The choice is recorded and drives website eligibility. Handy Heroes AB gets suggestions. Tests, build and DB checks pass. |
-| 2 | Recipient dialog, AI introduction, per-service images, cover | A real draft shows unique images, the introduction and the recipient, and passes the read-back check. Visual check in Proposales. |
+| 2 | Other services and neutral add/remove log; usage line; client notes, recipient dialog, AI introduction, title, questions in app; then per-service images and cover | A real draft shows unique images, the introduction and the recipient, and passes the read-back check. Visual check in Proposales. |
 | 3 | Proposals page with live status | Lists this app's proposals; status matches Proposales. |
 | 4 | Landing instructions and UI polish | Desktop and 375px layouts, keyboard and screen-reader labels checked. |
 | 5 | AI run and choice export | The export file covers every stage; evaluation reports are reproducible. |

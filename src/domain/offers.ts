@@ -5,14 +5,14 @@ import {
   type CatalogueV2,
 } from "./catalogue.js";
 import { reports, type ReportV2 } from "./reports.js";
-import { validateSelection, type SelectionResult } from "./selection.js";
+import { validateScope, type ScopeResult } from "./selection.js";
 import { exampleSelections } from "./example-selections.js";
 export function buildDraftSnapshot(
   report: ReportV2,
-  selection: SelectionResult,
+  selection: ScopeResult,
   catalogue: CatalogueV2,
 ) {
-  const checked = validateSelection(report, selection, catalogue);
+  const checked = validateScope(report, selection, catalogue);
   if (!checked.items.length) throw new Error("empty_offer");
   const items = checked.items.map((i) => {
     const svc = catalogue.services.find((s) => s.id === i.serviceId)!;

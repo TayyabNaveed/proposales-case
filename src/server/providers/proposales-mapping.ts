@@ -50,14 +50,16 @@ export function buildPricedPayload(
     snapshot.report,
     {
       items: snapshot.items.map(
-        ({ serviceId, quantity, disposition, findingIds, rationale }) => ({
+        ({ serviceId, quantity, disposition, findingIds, rationale, ...rest }) => ({
           serviceId,
           quantity,
           disposition,
           findingIds,
           rationale,
+          // Operator-added services keep their attribution through the rebuild.
+          ...("addedBy" in rest ? { addedBy: rest.addedBy } : {}),
         }),
-      ),
+      ) as Parameters<typeof buildDraftSnapshot>[1]["items"],
       questions: snapshot.questions,
       abstentionReason: null,
     },
@@ -88,7 +90,7 @@ export function buildPricedPayload(
         content_id: m.variationId,
         type: "product-block" as const,
         title: i.title + (i.billing === "monthly" ? " — per month" : ""),
-        description: `${i.deliverables.join("\n")}\n\nWhy: ${i.rationale}\n\nExcludes: ${i.exclusions.join("; ")}\n\nBilling: ${i.billing === "monthly" ? "EUR " + i.unitPriceMinor / 100 + " per month; recurring monthly service" : "One-time"}; illustrative prices excluding tax.`,
+        description: `${i.deliverables.join("\n")}${i.rationale ? `\n\nWhy: ${i.rationale}` : ""}\n\nExcludes: ${i.exclusions.join("; ")}\n\nBilling: ${i.billing === "monthly" ? "EUR " + i.unitPriceMinor / 100 + " per month; recurring monthly service" : "One-time"}; illustrative prices excluding tax.`,
         // Proposales fills an empty list with the library item's image (observed
         // 10 October), so a lead-only image cannot be expressed at creation.
         image_uuids: [m.imageUuid],

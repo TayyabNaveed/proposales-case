@@ -1,8 +1,12 @@
 import { z } from "zod";
 import recorded from "./recorded-recommendations.json";
-import { selectionSchema, type SelectionResult } from "./selection.js";
+import {
+  selectionSchema,
+  type SelectionResult,
+  type ScopeResult,
+} from "./selection.js";
 import { buildDraftSnapshot } from "./offers.js";
-import { catalogueV2 } from "./catalogue.js";
+import { catalogueV2, type CatalogueV2 } from "./catalogue.js";
 import type { ReportV2 } from "./reports.js";
 export const adjustmentSchema = z
   .array(
@@ -60,15 +64,19 @@ export function recordedFor(reportId: string) {
   if (!r) throw new Error("recorded_recommendation_missing");
   return { ...r, selection: selectionSchema.parse(r.selection) };
 }
+// The operator decides the scope. Kept suggestions keep their AI reason and
+// findings; anything else is attributed to the operator. The server makes that
+// distinction from the stored recommendation, never from the browser.
+// Catalogue bounds and prerequisites are checked when the snapshot is built.
 export function adjustedSelection(
   selection: SelectionResult,
   raw: unknown,
-): SelectionResult {
+): ScopeResult {
   const items = adjustmentSchema.parse(raw).map((i) => {
-    const candidate = selection.items.find((s) => s.serviceId === i.serviceId);
-    if (!candidate || i.quantity > candidate.quantity)
-      throw new Error("unsupported_adjustment");
-    return { ...candidate, ...i };
+    const suggested = selection.items.find((s) => s.serviceId === i.serviceId);
+    return suggested
+      ? { ...suggested, ...i }
+      : { ...i, findingIds: [], rationale: "" as const, addedBy: "operator" as const };
   });
   return { items, questions: selection.questions, abstentionReason: null };
 }
@@ -149,4 +157,37 @@ export async function admitBrowserGeneration(
     if (storage.getItem(key) !== value)
       throw Error("Browser storage could not save proposal recovery.");
   });
+}
+
+// Whether a catalogue service can be added to the current scope, and if not,
+// why. Mirrors the server's rules (selection.ts) so the screen can explain
+// instead of failing; the server still validates every request.
+export function serviceAvailability(
+  service: CatalogueV2["services"][number],
+  report: ReportV2,
+  selected: string[],
+): { available: boolean; reason?: string } {
+  const title = (id: string) => catalogueV2.services.find((s) => s.id === id)?.title ?? id;
+  if (service.id === "website-base" && report.capabilities.website.status === "present")
+    return { available: false, reason: "This business already has a website." };
+  const overlap = service.conflictsWith.find((id) => selected.includes(id));
+  if (overlap) return { available: false, reason: `Included in ${title(overlap)}.` };
+  const foundation =
+    service.requires === "website"
+      ? "website-base"
+      : service.requires === "campaign"
+        ? "ads-setup"
+        : null;
+  if (
+    service.requires &&
+    report.capabilities[service.requires].status !== "present" &&
+    !(foundation && selected.includes(foundation))
+  )
+    return {
+      available: false,
+      reason: foundation
+        ? `Needs ${service.requires === "website" ? "a website" : "a running campaign"}: add ${title(foundation)} first.`
+        : "Needs a confirmed Google Business Profile.",
+    };
+  return { available: true };
 }

@@ -28,7 +28,7 @@ test("recorded AI selection drives the four honest totals; removing optional ser
     0,
   );
 });
-test("adjustments preserve AI reasons, and removing foundation or inventing quantity fails preview validation", () => {
+test("adjustments preserve AI reasons; removing a foundation or exceeding catalogue bounds fails preview validation", () => {
   const rec = recordedFor("no-website");
   const items = rec.selection.items.map(
     ({ serviceId, quantity, disposition }) => ({
@@ -48,10 +48,20 @@ test("adjustments preserve AI reasons, and removing foundation or inventing quan
       items.filter((i) => i.serviceId !== "website-base"),
     ),
   );
-  assert.throws(() =>
+  // The operator may change quantities within catalogue bounds, not beyond them.
+  assert.equal(
     adjustedSelection(rec.selection, [
       { serviceId: "service-page", quantity: 3, disposition: "core" },
-    ]),
+    ]).items[0].quantity,
+    3,
+  );
+  assert.throws(() =>
+    previewRecommendation(
+      reports[0],
+      rec.selection,
+      items.map((i) => (i.serviceId === "website-base" ? { ...i, quantity: 2 } : i)),
+    ),
+    /invalid_quantity/,
   );
   assert.equal(
     adjustedSelection(rec.selection, [
@@ -99,4 +109,86 @@ test("restored pending identity survives recommendation read failure and reselec
   assert.equal(shouldSwitchExample("no-website", "no-website"), false);
   assert.equal(shouldSwitchExample("no-website", "enquiry-flow"), true);
   assert.throws(() => restorePendingGeneration('{"requestId":"bad"}'));
+});
+
+test("services outside the AI suggestions can be added, are attributed to the operator and still obey prerequisites", () => {
+  const rec = recordedFor("no-website");
+  const ai = rec.selection.items.map(({ serviceId, quantity, disposition }) => ({
+    serviceId,
+    quantity,
+    disposition,
+  }));
+  const added = adjustedSelection(rec.selection, [
+    ...ai,
+    { serviceId: "ai-visibility", quantity: 1, disposition: "optional" },
+  ]).items.find((i) => i.serviceId === "ai-visibility");
+  assert.deepEqual(added, {
+    serviceId: "ai-visibility",
+    quantity: 1,
+    disposition: "optional",
+    findingIds: [],
+    rationale: "",
+    addedBy: "operator",
+  });
+  const preview = previewRecommendation(reports[0], rec.selection, [
+    ...ai,
+    { serviceId: "ai-visibility", quantity: 1, disposition: "optional" },
+  ]);
+  assert.equal(preview?.optionalOneTimeMinor, 25000);
+  // Catalogue overlaps still apply: technical SEO is included in a new website.
+  assert.throws(
+    () =>
+      previewRecommendation(reports[0], rec.selection, [
+        ...ai,
+        { serviceId: "technical-seo", quantity: 1, disposition: "optional" },
+      ]),
+    /overlap_website_scope/,
+  );
+  // Without the website foundation, a website-dependent addition is refused.
+  assert.throws(() =>
+    previewRecommendation(reports[0], rec.selection, [
+      { serviceId: "ai-visibility", quantity: 1, disposition: "core" },
+    ]),
+    /missing_prerequisite/,
+  );
+});
+
+test("the model can never emit an operator item to skip the evidence check", async () => {
+  const { validateSelection } = await import("../src/domain/selection.js");
+  const { catalogueV2 } = await import("../src/domain/catalogue.js");
+  assert.throws(() =>
+    validateSelection(
+      reports[0],
+      {
+        items: [
+          {
+            serviceId: "website-base",
+            quantity: 1,
+            disposition: "core",
+            findingIds: [],
+            rationale: "",
+            addedBy: "operator",
+          },
+        ],
+        questions: [],
+        abstentionReason: null,
+      },
+      catalogueV2,
+    ),
+  );
+});
+
+test("other services explain why they cannot be added yet, from the same rules the server applies", async () => {
+  const { serviceAvailability } = await import("../src/domain/workbench.js");
+  const { catalogueV2 } = await import("../src/domain/catalogue.js");
+  const noSite = reports[0],
+    withSite = reports[1];
+  const svc = (id: string) => catalogueV2.services.find((s) => s.id === id)!;
+  assert.equal(serviceAvailability(svc("ai-visibility"), noSite, []).available, false);
+  assert.equal(serviceAvailability(svc("ai-visibility"), noSite, ["website-base"]).available, true);
+  assert.equal(serviceAvailability(svc("technical-seo"), noSite, ["website-base"]).available, false);
+  assert.equal(serviceAvailability(svc("website-base"), withSite, []).available, false);
+  assert.equal(serviceAvailability(svc("social-management"), noSite, []).available, true);
+  assert.equal(serviceAvailability(svc("ads-management"), withSite, ["ads-setup"]).available, true);
+  assert.match(serviceAvailability(svc("ai-visibility"), noSite, []).reason!, /website/i);
 });

@@ -1,8 +1,65 @@
-import { canRestartRecommendation } from "../../domain/workbench";
+import {
+  canRestartRecommendation,
+  serviceAvailability,
+} from "../../domain/workbench";
 import { catalogueV2, money } from "../../domain/catalogue";
 import { presentServices } from "../../domain/presentation";
 import type { ProposalWorkflow } from "./useProposalWorkflow";
 import { friendlyDate } from "./api";
+type Service = (typeof catalogueV2.services)[number];
+// Quantity (within catalogue bounds) and core/optional, for any chosen service.
+function ServiceControls({
+  flow,
+  service,
+  pick,
+  disabled,
+  suggestedQuantity,
+}: {
+  flow: ProposalWorkflow;
+  service: Service;
+  pick: { quantity: number; disposition: "core" | "optional" };
+  disabled: boolean;
+  suggestedQuantity?: number;
+}) {
+  return (
+    <div className="service-controls">
+      {service.maxQuantity > 1 && (
+        <label>
+          Quantity{" "}
+          <select
+            disabled={disabled}
+            value={pick.quantity}
+            onChange={(e) =>
+              flow.edit(service.id, { quantity: Number(e.target.value) })
+            }
+          >
+            {Array.from({ length: service.maxQuantity }, (_, i) => (
+              <option key={i} value={i + 1}>
+                {i + 1}
+                {suggestedQuantity === i + 1 ? " (suggested)" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <label>
+        Include as{" "}
+        <select
+          disabled={disabled}
+          value={pick.disposition}
+          onChange={(e) =>
+            flow.edit(service.id, {
+              disposition: e.target.value as "core" | "optional",
+            })
+          }
+        >
+          <option value="core">Core service</option>
+          <option value="optional">Optional extra</option>
+        </select>
+      </label>
+    </div>
+  );
+}
 export function ServicesView({
   flow,
   authenticated,
@@ -89,44 +146,13 @@ export function ServicesView({
                       </small>
                     )}
                     {pick && (
-                      <div className="service-controls">
-                        {item.quantity > 1 && (
-                          <label>
-                            Quantity{" "}
-                            <select
-                              disabled={blocked || flow.locked}
-                              value={pick.quantity}
-                              onChange={(e) =>
-                                flow.edit(service.id, {
-                                  quantity: Number(e.target.value),
-                                })
-                              }
-                            >
-                              {Array.from({ length: item.quantity }, (_, i) => (
-                                <option key={i} value={i + 1}>
-                                  {i + 1}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        )}
-                        <label>
-                          Include as{" "}
-                          <select
-                            disabled={blocked || flow.locked}
-                            value={pick.disposition}
-                            onChange={(e) =>
-                              flow.edit(service.id, {
-                                disposition: e.target.value as
-                                  "core" | "optional",
-                              })
-                            }
-                          >
-                            <option value="core">Core service</option>
-                            <option value="optional">Optional extra</option>
-                          </select>
-                        </label>
-                      </div>
+                      <ServiceControls
+                        flow={flow}
+                        service={service}
+                        pick={pick}
+                        disabled={blocked || flow.locked}
+                        suggestedQuantity={item.quantity}
+                      />
                     )}
                     <details>
                       <summary>Scope and supporting findings</summary>
@@ -145,6 +171,9 @@ export function ServicesView({
               })}
           </div>
         ))}
+      {rec.selection && flow.report && (
+        <OtherServices flow={flow} blocked={blocked} />
+      )}
       {rec.selection?.abstentionReason && (
         <div className="empty">{rec.selection.abstentionReason}</div>
       )}
@@ -211,5 +240,70 @@ export function ServicesView({
         )}
       </details>
     </section>
+  );
+}
+
+// The rest of the catalogue: collapsed and unchecked, so the operator can add
+// what the AI did not suggest. Added services are attributed to the operator.
+function OtherServices({ flow, blocked }: { flow: ProposalWorkflow; blocked: boolean }) {
+  const suggested = new Set(flow.recommendation.selection?.items.map((i) => i.serviceId));
+  const chosen = flow.selected.map((p) => p.serviceId);
+  const others = catalogueV2.services.filter((s) => !suggested.has(s.id));
+  const added = others.filter((s) => chosen.includes(s.id)).length;
+  if (!others.length || !flow.report) return null;
+  return (
+    <details className="other-services" open={added > 0}>
+      <summary>
+        Other services ({others.length}){added ? ` · ${added} added` : ""}
+      </summary>
+      <p className="caption">
+        Not suggested for this business. Add any that fit; they’re marked as
+        added by you.
+      </p>
+      {others.map((service) => {
+        const pick = flow.selected.find((p) => p.serviceId === service.id);
+        const state = serviceAvailability(
+          service,
+          flow.report!,
+          chosen.filter((id) => id !== service.id),
+        );
+        return (
+          <article
+            className={"service other " + (pick ? "chosen" : "")}
+            key={service.id}
+          >
+            <label className="service-heading">
+              <input
+                type="checkbox"
+                checked={!!pick}
+                disabled={blocked || flow.locked || (!pick && !state.available)}
+                onChange={(e) => flow.edit(service.id, e.target.checked ? {} : null)}
+              />
+              <strong>{service.title}</strong>
+              <span>
+                {money(service.unitPriceMinor)}
+                <small>
+                  {service.billing === "monthly" ? "/ month" : "per unit · once"}
+                </small>
+              </span>
+            </label>
+            <p>{service.deliverables.join(" · ")}</p>
+            {pick ? (
+              <>
+                <small className="added-by">Added by you</small>
+                <ServiceControls
+                  flow={flow}
+                  service={service}
+                  pick={pick}
+                  disabled={blocked || flow.locked}
+                />
+              </>
+            ) : (
+              !state.available && <small className="prerequisite">{state.reason}</small>
+            )}
+          </article>
+        );
+      })}
+    </details>
   );
 }

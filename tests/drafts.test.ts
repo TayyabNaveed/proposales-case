@@ -66,12 +66,14 @@ test("snapshot uses current catalogue prices and persisted rationale, independen
     a,
   );
 });
-test("client prices, rationale, invented services and excessive quantities cannot enter a snapshot", () => {
+test("client prices, rationale, unknown services, unmet prerequisites and over-catalogue quantities cannot enter a snapshot", () => {
   for (const raw of [
     [{ ...selections[0], unitPriceMinor: 1 }],
     [{ ...selections[0], rationale: "invented" }],
     [{ ...selections[0], serviceId: "ads-setup" }],
-    [selections[0], { ...selections[1], quantity: 3 }],
+    [{ ...selections[0], serviceId: "not-in-catalogue" }],
+    // Beyond the catalogue's maximum; quantities within it are the operator's call.
+    [selections[0], { ...selections[1], quantity: 11 }],
     [],
     [selections[1]],
   ]) {

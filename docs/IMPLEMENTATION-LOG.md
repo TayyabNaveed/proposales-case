@@ -192,3 +192,10 @@ Final HTTP integration passed (1/1): unauthorised/cross-origin writes rejected, 
 - Ruling: one module (`server/limits.ts`) owns the daily caps, configurable with `DAILY_LIMIT_*`. Defaults follow cost: search 20, identify 60, report 60, recommendation 20, draft 10. `DAILY_LIMITS=off` is for local development and is ignored when `VERCEL_ENV=production`. Invalid values fail closed. Migration 008 leaves the database checking only that counts are positive. Per-minute and login limits are unchanged.
 - Messages state that limits reset at midnight UTC. 142 offline tests and DB 9/9 pass (integration tests pin their own limits). Migration 008 awaits approval before it is applied to the shared database.
 - Revised after review with Tayyab: access is authenticated, so daily caps are opt-in (none by default). Bounds are rate limits, caching, the provider accounts' own limits, and visible usage. `DAILY_LIMITS=off` was removed as unnecessary.
+
+## 11 October 2026 — Phase 2.1: other services
+
+- Decision (Tayyab): below the AI suggestions, a collapsed and unchecked "Other services" list lets the operator add any catalogue service. Record additions and removals neutrally. An addition can be a missed need or a service offered to everyone.
+- The AI output schema (`selectionSchema`) is unchanged, so the model can never emit an operator item. The proposal scope (`scopeSchema`) also accepts `addedBy: "operator"` items with no findings or reason. The server attributes anything outside the stored recommendation to the operator. Catalogue bounds, overlaps and prerequisites apply to every item. Quantities may change within catalogue bounds; this replaces the earlier rule that capped them at the AI's quantity.
+- No new log table: snapshot plus recommendation give additions, removals and quantity changes exactly. Operator blocks have no "Why" line. AI blocks are byte-identical to before, so existing drafts still verify.
+- UI explains unavailable services from the same rules (`serviceAvailability`). 145 offline tests, build and DB 9/9 pass.
