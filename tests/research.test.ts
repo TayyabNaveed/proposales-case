@@ -488,3 +488,14 @@ test("a rejected summary reports which check failed", async () => {
     /research_unsupported_summary/,
   );
 });
+test("client notes become an attributed operator source and the owner's goal", async () => {
+  const { buildLiveReport, operatorChoiceSchema, notesEvidence } = await import("../src/domain/research.js");
+  const notes = notesEvidence("Wants more corporate cleaning clients.", "2026-10-10T12:00:00.000Z");
+  const r = buildLiveReport(input, [...evidence, notes], output, "live-123", chosen);
+  assert.deepEqual(r.goals, [{ text: "Wants more corporate cleaning clients.", sourceId: "notes" }]);
+  assert.equal(r.evidence.find((e) => e.id === "notes")?.label, "Notes from the operator");
+  // Empty notes are no notes; long notes are refused.
+  assert.equal(operatorChoiceSchema.parse({ ...choiceBase, notes: "  " }).notes, undefined);
+  assert.throws(() => operatorChoiceSchema.parse({ ...choiceBase, notes: "x".repeat(1001) }));
+});
+const choiceBase = { candidate: 0, website: { kind: "none" } };

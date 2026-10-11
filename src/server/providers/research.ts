@@ -21,6 +21,7 @@ import {
   publicSourceUrl,
   researchOutputSchema,
   identifyOutputSchema,
+  notesSourceId,
   buildLiveReport,
   type ChosenBusiness,
   type ResearchInput,
@@ -301,8 +302,10 @@ async function structuredCall<S extends z.ZodType, R>(
     });
   }
 }
+// Up to eight public sources, plus the operator's notes when given.
 const boundedEvidence = (evidence: Evidence[]) => {
-  if (!evidence.length || evidence.length > 8)
+  const sources = evidence.filter((e) => e.id !== notesSourceId);
+  if (!sources.length || sources.length > 8)
     throw new Error("research_sources_missing");
 };
 // Identify stage: which businesses match, with evidence code verifies.

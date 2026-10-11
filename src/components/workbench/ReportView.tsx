@@ -106,7 +106,9 @@ export function ReportView({ report }: { report: ReportV2 }) {
               {f.kind === "observed"
                 ? report.mode === "synthetic"
                   ? "Example information"
-                  : "From public sources"
+                  : f.evidenceIds.every((id) => id === "notes")
+                    ? "From your notes"
+                    : "From public sources"
                 : f.kind === "inferred"
                   ? "Opportunity"
                   : "Needs confirmation"}

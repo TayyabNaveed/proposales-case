@@ -53,14 +53,32 @@ export const operatorChoiceSchema = z
   .object({
     candidate: z.number().int().min(0).max(2),
     website: operatorWebsiteSchema,
+    // What the client said, e.g. on a call. Optional; empty means none.
+    notes: z
+      .string()
+      .max(1000)
+      .optional()
+      .transform((v) => v?.trim() || undefined),
   })
   .strict()
   .refine(
     (c) => c.website.kind !== "typed" || !!publicSourceUrl(c.website.url),
     "invalid_public_url",
   );
-export type OperatorChoice = z.infer<typeof operatorChoiceSchema>;
+export type OperatorChoice = z.input<typeof operatorChoiceSchema>;
 export type ChosenBusiness = { candidate: VerifiedCandidate; website: OperatorWebsite };
+// The operator's client notes as one attributed source. Its time is the identify
+// run's, so the same notes give the same report cache identity.
+export const notesSourceId = "notes";
+export function notesEvidence(notes: string, at: string): Evidence {
+  return {
+    id: notesSourceId,
+    label: "Notes from the operator",
+    excerpt: notes,
+    synthetic: false,
+    retrievedAt: at,
+  };
+}
 export type Evidence = ReportV2["evidence"][number];
 const text = z.string().min(1).max(600);
 export const researchOutputSchema = z
@@ -171,7 +189,10 @@ export function buildLiveReport(
       chosenBy: "operator",
       website,
     },
-    goals: [],
+    // Client notes are the owner's stated goals; public search never provides them.
+    goals: known.has(notesSourceId)
+      ? [{ text: known.get(notesSourceId)!.excerpt, sourceId: notesSourceId }]
+      : [],
     capabilities: {
       website:
         website.kind === "selected"

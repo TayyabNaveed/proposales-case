@@ -39,6 +39,7 @@ export function BusinessChoice({
     .filter((e): e is Evidence => !!e?.url);
   const [site, setSite] = useState<string | null>(null),
     [typed, setTyped] = useState(""),
+    [notes, setNotes] = useState(""),
     [error, setError] = useState("");
   useEffect(() => {
     dialog.current?.showModal();
@@ -59,6 +60,7 @@ export function BusinessChoice({
     }
     onConfirm({
       candidate,
+      notes,
       website: url
         ? { kind: "typed", url: publicSourceUrl(url)! }
         : site
@@ -169,6 +171,27 @@ export function BusinessChoice({
                     This isn’t the business’s website
                   </button>
                 )}
+              </fieldset>
+            )}
+            {candidate !== null && (
+              <fieldset>
+                <legend>
+                  Notes from the client <small>(optional)</small>
+                </legend>
+                <label className="choice-typed">
+                  What did the client tell you? Goals, budget, priorities.
+                  <textarea
+                    rows={3}
+                    maxLength={1000}
+                    value={notes}
+                    placeholder="e.g. Call on 11 Oct: wants more corporate clients, around €500/month."
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
+                </label>
+                <small>
+                  Used as the client’s goals for the report, suggestions and
+                  introduction. Marked as your notes, never as public information.
+                </small>
               </fieldset>
             )}
           </>

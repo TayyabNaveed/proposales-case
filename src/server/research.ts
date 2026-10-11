@@ -17,6 +17,7 @@ import {
   researchOutputSchema,
   identifyOutputSchema,
   operatorChoiceSchema,
+  notesEvidence,
   type ResearchInput,
   type OperatorChoice,
 } from "../domain/research.js";
@@ -309,9 +310,10 @@ export function createResearchService(
           !(candidate.websiteSourceIds ?? []).includes(choice.website.sourceId))
       )
         throw new Error("research_choice_invalid");
-      const evidence = data.evidence.filter((e) =>
-        candidate.sourceIds.includes(e.id),
-      );
+      const evidence = [
+        ...data.evidence.filter((e) => candidate.sourceIds.includes(e.id)),
+        ...(choice.notes ? [notesEvidence(choice.notes, identified.createdAt)] : []),
+      ];
       if (!evidence.length) throw new Error("research_sources_missing");
       modelConfigured();
       const chosen = { candidate, website: choice.website };

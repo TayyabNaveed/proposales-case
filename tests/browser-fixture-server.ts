@@ -121,7 +121,7 @@ function makeReport(search: any, identifyId?: string, choice?: any): any {
       result: {
         report: liveReport(search.input.businessName, id),
         model: "synthetic-browser-fixture",
-        promptVersion: "research-report-6",
+        promptVersion: "research-report-7",
         attempts: 1,
         durationMs: 1,
         usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
