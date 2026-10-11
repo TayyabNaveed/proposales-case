@@ -178,6 +178,15 @@ export function buildPricedPayload(
               .join("\n\n")
           : `# Metascalers growth plan\n${modern && snapshot.report.mode === "live" ? "Technical-case proposal based on public-source research" : "Synthetic technical-case proposal"}. No recipient or email sending.\n\nCore one-time: EUR ${snapshot.coreOneTimeMinor / 100}. Core monthly: EUR ${snapshot.coreMonthlyMinor / 100}/month. Optional one-time: EUR ${snapshot.optionalOneTimeMinor / 100}. Optional monthly: EUR ${snapshot.optionalMonthlyMinor / 100}/month.\n\nIllustrative prices excluding tax. Review suitability, access, budget, scope and billing before sending.\n${snapshot.questions.join("\n")}`,
     ...(recipient ? { recipient: recipientInput(recipient) } : {}),
+    // proposal-5: the pinned template cover; Proposales needs its id and uuid.
+    ...(version === "proposal-5" && snapshot.compositionAssets?.cover
+      ? {
+          background_image: {
+            id: snapshot.compositionAssets.cover.imageId,
+            uuid: snapshot.compositionAssets.cover.imageUuid,
+          },
+        }
+      : {}),
     tax_options: { mode: "simplified" as const, tax_included: false },
     data: {
       case_operation: operationKey,
@@ -237,6 +246,9 @@ export function verifyPricedProposal(
       data: z.record(z.string(), z.unknown()),
       tax_options: z.object({ mode: z.string(), tax_included: z.boolean() }),
       blocks: z.array(z.record(z.string(), z.unknown())),
+      background_image: z
+        .object({ id: z.number(), uuid: z.string() })
+        .nullish(),
     })
     .safeParse(raw);
   if (!parsed.success) return { verified: false, issues: ["provider_shape"] };
@@ -264,6 +276,15 @@ export function verifyPricedProposal(
     issues.push("metadata");
   if (p.tax_options.mode !== "simplified" || p.tax_options.tax_included)
     issues.push("tax_display");
+  // A pinned cover must be the one set; without one, the provider's default stands.
+  const cover =
+    "background_image" in expected ? expected.background_image : null;
+  if (
+    cover &&
+    (p.background_image?.id !== cover.id ||
+      p.background_image?.uuid !== cover.uuid)
+  )
+    issues.push("cover");
   const version = snapshot.compositionVersion;
   if (version === "proposal-4" || version === "proposal-5") {
     if (p.data.case_composition !== version) issues.push("composition");

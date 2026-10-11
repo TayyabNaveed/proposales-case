@@ -10,6 +10,7 @@ import { createOperationStore } from "./db.js";
 import { createAssetStore, getServiceMapping } from "./provider-assets.js";
 import {
   loadCompositionAssets,
+  withTemplateCover,
   proposalComposition,
 } from "./category-assets.js";
 import { checkedCompositionAssets } from "./providers/category-blocks.js";
@@ -87,12 +88,24 @@ export function apiHandlers() {
         ...(composition !== "proposal-3"
           ? {
               categoryComposition: composition,
-              compositionAssets: (snapshot: DraftSnapshot) =>
-                loadCompositionAssets(
+              compositionAssets: async (snapshot: DraftSnapshot) => {
+                const companyId = process.env.PROPOSALES_COMPANY_ID ?? "";
+                const assets = await loadCompositionAssets(
                   createAssetStore(database()),
-                  process.env.PROPOSALES_COMPANY_ID ?? "",
+                  companyId,
                   snapshot,
-                ),
+                );
+                // The agency's Proposales template supplies the cover.
+                const template = process.env.PROPOSALES_TEMPLATE_UUID;
+                return composition === "proposal-5" && template
+                  ? withTemplateCover(assets, () =>
+                      createProposales({
+                        companyId,
+                        apiKey: process.env.PROPOSALES_API_KEY ?? "",
+                      }).templateCover(template),
+                    )
+                  : assets;
+              },
             }
           : {}),
       }).getOrCreateDraftSnapshot(

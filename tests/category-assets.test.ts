@@ -6,6 +6,7 @@ import {
   seedCategory,
   loadCompositionAssets,
   proposalComposition,
+  withTemplateCover,
 } from "../src/server/category-assets.js";
 import type { AssetStore, AssetRecord } from "../src/server/provider-assets.js";
 function memory(): AssetStore {
@@ -160,4 +161,33 @@ test("new snapshots require all category assets verified and preserve pins after
     (await loadCompositionAssets(store, "1", s)).categories[0].imageUuid,
     pins.categories[0].imageUuid,
   );
+});
+test("a template cover that cannot be read never blocks the proposal", async () => {
+  const assets = categorySnapshot().compositionAssets!;
+  const cover = {
+    templateUuid: "00000000-0000-4000-8000-0000000000aa",
+    imageId: 7,
+    imageUuid: "00000000-0000-4000-8000-0000000000bb",
+  };
+  assert.deepEqual(await withTemplateCover(assets, async () => cover), {
+    ...assets,
+    cover,
+  });
+  assert.deepEqual(await withTemplateCover(assets, async () => null), assets);
+  const logged: unknown[] = [];
+  const original = console.error;
+  console.error = (...a: unknown[]) => logged.push(a);
+  try {
+    assert.deepEqual(
+      await withTemplateCover(assets, async () => {
+        throw Object.assign(Error("x"), { code: "template_not_found" });
+      }),
+      assets,
+    );
+  } finally {
+    console.error = original;
+  }
+  assert.deepEqual(logged, [
+    ["template_cover_unavailable", "template_not_found"],
+  ]);
 });

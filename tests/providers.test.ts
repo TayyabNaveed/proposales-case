@@ -272,3 +272,48 @@ test("draft retrieval must match the requested UUID even within the company", as
     /proposal_identity/,
   );
 });
+test("template cover is read from one of the company's templates, with id and uuid agreeing", async () => {
+  const image = "00000000-0000-4000-8000-0000000000c0";
+  const respond =
+    (listed: unknown[], template: Record<string, unknown>) =>
+    async (input: RequestInfo | URL) =>
+      String(input).includes("/templates")
+        ? json({ data: listed })
+        : json({ data: { uuid, company_id: 7, status: "draft", data: {}, ...template } });
+  const ok = client(
+    respond([{ uuid, background_image_uuid: image }], {
+      background_image: { id: 42, uuid: image },
+    }) as typeof fetch,
+  );
+  assert.deepEqual(await ok.templateCover(uuid), {
+    templateUuid: uuid,
+    imageId: 42,
+    imageUuid: image,
+  });
+  // A template without a cover leaves Proposales' default.
+  assert.equal(
+    await client(
+      respond([{ uuid, background_image_uuid: null }], { background_image: null }) as typeof fetch,
+    ).templateCover(uuid),
+    null,
+  );
+  const failures: [unknown[], Record<string, unknown>, RegExp][] = [
+    [[], { background_image: { id: 42, uuid: image } }, /template_not_found/],
+    [
+      [{ uuid, background_image_uuid: "00000000-0000-4000-8000-0000000000c1" }],
+      { background_image: { id: 42, uuid: image } },
+      /template_cover_mismatch/,
+    ],
+    [
+      [{ uuid, background_image_uuid: image }],
+      { company_id: 8, background_image: { id: 42, uuid: image } },
+      /company_scope/,
+    ],
+  ];
+  for (const [listed, template, error] of failures)
+    await assert.rejects(
+      () => client(respond(listed, template) as typeof fetch).templateCover(uuid),
+      error,
+    );
+  await assert.rejects(() => ok.templateCover("not-a-uuid"), /invalid_input/);
+});

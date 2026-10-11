@@ -38,6 +38,9 @@ const proposalSchema = z.object({
   status: z.string().nullable(),
   status_changed_at: z.number().nullable().optional(),
   pdf_url: z.unknown().optional().transform(trustedPdfUrl),
+  background_image: z
+    .object({ id: numericId, uuid: z.string().uuid() })
+    .nullish(),
   data: z.record(z.string(), z.unknown()).nullish(),
   currency: z.string().optional(),
   title_md: z.string().nullable().optional(),
@@ -197,6 +200,41 @@ export function createProposales(options: {
         await request("companies", "GET", undefined, signal),
       );
       return r.data.map((c) => ({ ...c, id: String(c.id) }));
+    },
+    // The cover of one of this company's templates. Creating a proposal needs the
+    // image's id and uuid (observed 11 October); the template list gives only the
+    // uuid, so the template itself is read too, and both must agree.
+    async templateCover(templateUuid: string, signal?: AbortSignal) {
+      if (!z.string().uuid().safeParse(templateUuid).success)
+        throw new ProviderError("invalid_input");
+      const listed = parse(
+        z.object({
+          data: z.array(
+            z.object({
+              uuid: z.string().uuid(),
+              background_image_uuid: z.string().uuid().nullish(),
+            }),
+          ),
+        }),
+        await request(
+          `companies/${companyId}/templates`,
+          "GET",
+          undefined,
+          signal,
+        ),
+      ).data.find((t) => t.uuid === templateUuid);
+      if (!listed) throw new ProviderError("template_not_found");
+      const t = parse(
+        z.object({ data: proposalSchema }),
+        await request(`proposals/${templateUuid}`, "GET", undefined, signal),
+      ).data;
+      if (t.uuid !== templateUuid || String(t.company_id) !== companyId)
+        throw new ProviderError("company_scope");
+      const image = t.background_image;
+      if (!image) return null;
+      if (image.uuid !== listed.background_image_uuid)
+        throw new ProviderError("template_cover_mismatch");
+      return { templateUuid, imageId: Number(image.id), imageUuid: image.uuid };
     },
     async verifyCompany(signal?: AbortSignal) {
       const c = (await this.listCompanies(signal)).find(

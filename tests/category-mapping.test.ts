@@ -284,3 +284,46 @@ test("proposal-5 verification checks category rows like proposal-4", () => {
     );
   }
 });
+test("proposal-5 sends and verifies the pinned template cover; without one, none is sent", () => {
+  const s = clientSnapshot();
+  const cover = {
+    templateUuid: "00000000-0000-4000-8000-0000000000aa",
+    imageId: 390706,
+    imageUuid: "00000000-0000-4000-8000-0000000000bb",
+  };
+  assert.equal(
+    "background_image" in buildPricedPayload(s, [], "1", "test"),
+    false,
+  );
+  const pinned = {
+    ...s,
+    compositionAssets: { ...s.compositionAssets!, cover },
+  };
+  const p = buildPricedPayload(pinned, [], "1", "test");
+  assert.deepEqual((p as any).background_image, {
+    id: 390706,
+    uuid: cover.imageUuid,
+  });
+  // The cover is presentation: it does not enter the scope's identity checks.
+  const read = {
+    ...p,
+    uuid: "00000000-0000-4000-8000-000000000099",
+    status: "draft",
+    recipient_is_set: false,
+    currency: "EUR",
+  };
+  assert.equal(
+    verifyPricedProposal(read, pinned, [], "1", "test").verified,
+    true,
+  );
+  for (const changed of [null, { id: 1, uuid: cover.imageUuid }]) {
+    const r = verifyPricedProposal(
+      { ...read, background_image: changed },
+      pinned,
+      [],
+      "1",
+      "test",
+    );
+    assert.deepEqual(r.issues, ["cover"]);
+  }
+});

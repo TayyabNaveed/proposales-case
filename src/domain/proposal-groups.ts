@@ -73,6 +73,15 @@ export const compositionAssetsSchema = z
       )
       .min(1)
       .max(14),
+    // proposal-5: the agency template's cover, pinned when the snapshot is saved.
+    cover: z
+      .object({
+        templateUuid: z.uuid(),
+        imageId: z.number().int().positive().safe(),
+        imageUuid: z.uuid(),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
   .superRefine((value, ctx) => {

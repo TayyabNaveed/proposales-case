@@ -68,6 +68,25 @@ export async function seedCategory(options: {
     imageUrl: asset.imageUrl,
   });
 }
+// Adds the agency template's cover to proposal-5 assets. A cover is decoration:
+// if it cannot be read, the proposal is still created with Proposales' default
+// cover, and the reason is logged as a code only.
+export async function withTemplateCover(
+  assets: CompositionAssets,
+  read: () => Promise<CompositionAssets["cover"] | null>,
+): Promise<CompositionAssets> {
+  try {
+    const cover = await read();
+    return cover ? compositionAssetsSchema.parse({ ...assets, cover }) : assets;
+  } catch (e) {
+    const code = (e as { code?: unknown }).code;
+    console.error(
+      "template_cover_unavailable",
+      typeof code === "string" ? code : "unexpected",
+    );
+    return assets;
+  }
+}
 export async function loadCompositionAssets(
   store: AssetStore,
   companyId: string,
