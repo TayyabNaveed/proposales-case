@@ -204,3 +204,11 @@ Final HTTP integration passed (1/1): unauthorised/cross-origin writes rejected, 
 
 - Decision (Tayyab): show usage rather than block it. `GET /api/usage` (authenticated, rate-limited) totals the stored runs for the access scope: searches, Tavily credits, AI runs and tokens, for today and this month (UTC). Failed runs count; cache hits create no run and cost nothing. Calls made outside the app (evaluation scripts) are not included.
 - Real check: logged out returns 401. Logged in, this month showed 9 searches, 27 credits, 30 AI runs and about 101k tokens. Usage integration test plus DB 10/10; 145 offline tests; build.
+
+## 11 October 2026 — Phase 2.3: proposal content
+
+- **Client notes:** optional, in the choose dialog. They are an attributed source ("Notes from the operator") and become the report's owner goals, which the selector already prioritises. Findings from them are labelled "From your notes". Prompt `research-report-7`.
+- **Introduction:** new stage `proposal-intro-1`, stored and admitted like the other stages (migration 009 adds the `intro` stage name; applied). Each sentence carries references; code keeps only supported sentences. The first real call failed the output schema on a 300-character sentence limit. Ruling: generous schema bounds, the prompt asks for short sentences, and the operator edits; a hard limit must not discard the whole introduction. "Propose only the supplied services" was added after a sample mentioned a third-party offer.
+- **Create dialog:** editable introduction; recipient with company prefilled and email suggestions found by code in the chosen business's sources (own domain and role addresses first; a directory's own address excluded); review questions shown as a reminder for the operator only.
+- **`proposal-3` composition:** client-facing title, introduction, "Prices exclude VAT.", optional recipient, no questions. The read-back check compares the recipient with what was entered, or requires none (noted for Tayyab, who accepted recipients for organising drafts). Older compositions are byte-identical.
+- **Evidence:** 152 offline tests, DB 10/10, build. Real local run for Handy Heroes AB: introduction drafted; draft confirmed with no issues; repeat reused; Proposales shows the new title, the recipient (reserved example.com address) and two blocks. No email sent.

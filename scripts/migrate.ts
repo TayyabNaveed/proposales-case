@@ -14,6 +14,7 @@ try {
     "006_app_role",
     "007_identify_stage",
     "008_configurable_limits",
+    "009_intro_stage",
   ]) {
     await pool.query(
       fs.readFileSync("db/migrations/" + migration + ".sql", "utf8"),

@@ -5,7 +5,12 @@ import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import { reports, type ReportV2 } from "../domain/reports.js";
 import { catalogueV2, type CatalogueV2 } from "../domain/catalogue.js";
-import { buildDraftSnapshot, type DraftSnapshot } from "../domain/offers.js";
+import {
+  buildDraftSnapshot,
+  proposalPresentationSchema,
+  type DraftSnapshot,
+  type ProposalPresentation,
+} from "../domain/offers.js";
 import { snapshotHash } from "./canonical.js";
 import { recommendationIdentity } from "./providers/recommendations.js";
 import {
@@ -25,6 +30,7 @@ export function prepareDraftSnapshot(
   catalogue: CatalogueV2,
   scope: string,
   model: string,
+  presentation?: ProposalPresentation,
 ): DraftSnapshot {
   if (record.accessScope !== scope) throw new Error("recommendation_missing");
   const identity = recommendationIdentity(report, catalogue, scope, model);
@@ -50,6 +56,8 @@ export function prepareDraftSnapshot(
       catalogue,
     ),
     compositionVersion,
+    // Without approved text, the proposal still gets the VAT line and title.
+    presentation: proposalPresentationSchema.parse(presentation ?? { intro: "" }),
   };
 }
 export type StoredDraftSnapshot = {
@@ -165,6 +173,7 @@ export function createDraftService(
       recommendationId: string,
       selections: unknown,
       accessScope: string,
+      presentation?: ProposalPresentation,
     ) {
       z.uuid().parse(requestId);
       z.uuid().parse(recommendationId);
@@ -180,9 +189,16 @@ export function createDraftService(
             disposition,
           }),
         );
+        // A repeat must ask for the same scope and text; never a silent overwrite.
+        // Snapshots from before proposal-3 have no presentation to compare.
+        const samePresentation =
+          !existing.snapshot.presentation ||
+          snapshotHash(existing.snapshot.presentation) ===
+            snapshotHash(proposalPresentationSchema.parse(presentation ?? { intro: "" }));
         if (
           existing.recommendationId !== recommendationId ||
-          snapshotHash(canonical(requested)) !== snapshotHash(canonical(saved))
+          snapshotHash(canonical(requested)) !== snapshotHash(canonical(saved)) ||
+          !samePresentation
         )
           throw new Error("draft_request_conflict");
         return existing;
@@ -206,6 +222,7 @@ export function createDraftService(
         options.catalogue ?? catalogueV2,
         accessScope,
         options.model,
+        presentation,
       );
       return store.save(requestId, recommendationId, accessScope, snapshot);
     },

@@ -107,6 +107,23 @@ export function buildOffer(raw: unknown) {
   };
 }
 export type OfferSnapshot = ReturnType<typeof buildOffer>;
+// What the operator approved for the proposal's text: the introduction (AI draft,
+// possibly edited) and the recipient. Part of the immutable snapshot.
+export const proposalPresentationSchema = z
+  .object({
+    intro: z.string().trim().max(1500),
+    recipient: z
+      .object({
+        companyName: z.string().trim().min(1).max(160),
+        contactName: z.string().trim().max(120).optional(),
+        email: z.email().max(254).optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+export type ProposalPresentation = z.infer<typeof proposalPresentationSchema>;
 export type DraftSnapshot = ReturnType<typeof buildDraftSnapshot> & {
-  compositionVersion?: "proposal-2";
+  compositionVersion?: "proposal-2" | "proposal-3";
+  presentation?: ProposalPresentation;
 };

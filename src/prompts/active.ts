@@ -1,7 +1,8 @@
 import { definition as identify } from "./business-identity/v1.js";
 import { definition as research } from "./research-report/v7.js";
 import { definition as selection } from "./service-recommendation/v1.js";
-export const activePrompts = { identify, research, selection } as const;
+import { definition as intro } from "./proposal-intro/v1.js";
+export const activePrompts = { identify, research, selection, intro } as const;
 export type PromptDefinition = {
   id: string;
   version: string;

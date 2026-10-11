@@ -32,7 +32,7 @@ import {
   type SearchResult,
   ResearchReportFailure,
 } from "./providers/research.js";
-type Stage = "search" | "identify" | "report";
+type Stage = "search" | "identify" | "report" | "intro";
 export type ResearchRecord = {
   id: string;
   stage: Stage;
@@ -161,6 +161,7 @@ export function createResearchStore(
         "research_search_failed",
         "research_report_failed",
         "research_identify_failed",
+        "research_intro_failed",
         "research_sources_missing",
       ];
       const code =

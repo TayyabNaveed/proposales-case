@@ -20,7 +20,10 @@ import { consumeActionAttempt } from "./access-store.js";
 import { createResearchStore, createResearchService } from "./research.js";
 import { createResearchApi } from "./research-api.js";
 import { readUsage } from "./usage.js";
-import { account, safeError } from "./http.js";
+import { account, safeError, smallJson } from "./http.js";
+import { createIntroService } from "./intro.js";
+import { adjustmentsSchema } from "./drafts.js";
+import { z } from "zod";
 async function consume(scope: string, action: string) {
   const secret = process.env.SESSION_SECRET;
   if (!secret) throw new Error("access_unconfigured");
@@ -64,7 +67,7 @@ export function apiHandlers() {
     async recommendation(id, scope) {
       return createRecommendationStore(database()).get(id, scope);
     },
-    async snapshot(requestId, recommendationId, selections, scope) {
+    async snapshot(requestId, recommendationId, selections, scope, presentation) {
       return createDraftService(database(), {
         model: model(),
         resolveReport: researchService().resolveReport,
@@ -73,6 +76,7 @@ export function apiHandlers() {
         recommendationId,
         selections,
         scope,
+        presentation,
       );
     },
     async getSnapshot(id, scope) {
@@ -156,6 +160,45 @@ export function usageHandlers() {
         return Response.json(await readUsage(database(), scope), {
           headers: { "Cache-Control": "no-store" },
         });
+      } catch (e) {
+        return safeError(e);
+      }
+    },
+  };
+}
+export function introHandlers() {
+  return {
+    async POST(req: Request) {
+      try {
+        const scope = account(req, true),
+          body = z
+            .object({
+              recommendationId: z.uuid(),
+              selections: adjustmentsSchema,
+              refresh: z.boolean().default(false),
+            })
+            .strict()
+            .parse(await smallJson(req));
+        if (!(await consume(scope, "intro-write")))
+          throw new Error("too_many_attempts");
+        const r = await createIntroService(database(), {
+          model: model(),
+          resolveReport: researchService().resolveReport,
+        }).draft(body.recommendationId, body.selections, scope, body.refresh);
+        const result = r.state === "ready" ? (r.result as { text: string; dropped: number; promptVersion: string }) : null;
+        return Response.json(
+          {
+            intro: {
+              state: r.state,
+              cacheHit: r.cacheHit,
+              text: result?.text ?? "",
+              dropped: result?.dropped ?? 0,
+              promptVersion: result?.promptVersion ?? null,
+              errorCode: r.errorCode,
+            },
+          },
+          { headers: { "Cache-Control": "no-store" } },
+        );
       } catch (e) {
         return safeError(e);
       }

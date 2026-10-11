@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import type { ProposalPresentation } from "../../domain/offers";
 import type { ReportV2 } from "../../domain/reports";
 import type { SelectionResult } from "../../domain/selection";
 import {
@@ -228,7 +229,8 @@ export function useProposalWorkflow(
       setBusy("");
     }
   }
-  async function generate() {
+  // A pending request keeps its saved text; a new one carries what the operator approved.
+  async function generate(presentation?: ProposalPresentation) {
     if (
       !report ||
       action.current ||
@@ -243,6 +245,7 @@ export function useProposalWorkflow(
         requestId: crypto.randomUUID(),
         recommendationId: recommendation.id!,
         selections: selected,
+        ...(presentation ? { presentation } : {}),
       };
     action.current = true;
     setBusy("Saving proposal recovery");
@@ -411,6 +414,7 @@ export function useProposalWorkflow(
     checkDraft,
     newVersion,
     edit,
+    expire: session.expire,
   };
 }
 export type ProposalWorkflow = ReturnType<typeof useProposalWorkflow>;

@@ -1,5 +1,10 @@
 import { activePrompts, type PromptDefinition } from "../../prompts/active.js";
 import { decideIdentity } from "../../domain/identity.js";
+import {
+  introOutputSchema,
+  keepSupported,
+  type IntroInput,
+} from "../../domain/intro.js";
 import { promptProvenance } from "../prompt-provenance.js";
 import { z } from "zod";
 import { createDeepSeek } from "@ai-sdk/deepseek";
@@ -343,4 +348,21 @@ export async function generateResearchReport(
     (d) => new ResearchReportFailure(d),
   );
   return { ...diagnostics, report: value };
+}
+export class IntroFailure extends Error {
+  constructor(readonly diagnostics: StageDiagnostics) {
+    super("research_intro_failed");
+  }
+}
+// Introduction stage: a short tailored opening; unsupported sentences dropped.
+export async function draftIntroduction(input: IntroInput, options: ModelOptions = {}) {
+  const { value, ...diagnostics } = await structuredCall(
+    activePrompts.intro,
+    introOutputSchema,
+    JSON.stringify(input),
+    options,
+    (output) => keepSupported(output, input),
+    (d) => new IntroFailure(d),
+  );
+  return { ...diagnostics, ...value };
 }

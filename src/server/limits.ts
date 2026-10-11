@@ -2,7 +2,13 @@
 // authenticated, so there is no cap by default: rate limits (access-store.ts),
 // caching and the provider accounts' own limits bound use, and usage is shown
 // rather than blocked. A deployment can still set DAILY_LIMIT_<ACTION>.
-export type LimitedAction = "search" | "identify" | "report" | "recommendation" | "draft";
+export type LimitedAction =
+  | "search"
+  | "identify"
+  | "report"
+  | "intro"
+  | "recommendation"
+  | "draft";
 
 export function dailyLimit(
   action: LimitedAction,

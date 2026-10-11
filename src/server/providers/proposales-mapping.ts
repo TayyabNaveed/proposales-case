@@ -1,7 +1,8 @@
 import {
   presentServices,
-  compositionVersion,
+  supportedCompositions,
 } from "../../domain/presentation.js";
+import { agencyProfile } from "../../domain/agency.js";
 import { z } from "zod";
 import { buildDraftSnapshot, type DraftSnapshot } from "../../domain/offers.js";
 import { snapshotHash } from "../canonical.js";
@@ -21,6 +22,16 @@ const mappingsSchema = z.array(
     })
     .strict(),
 );
+// Proposales takes first/last name; the contact's name is split at the first space.
+function recipientInput(r: NonNullable<DraftSnapshot["presentation"]>["recipient"] & {}) {
+  const [first, ...rest] = (r.contactName ?? "").split(/\s+/).filter(Boolean);
+  return {
+    ...(first ? { first_name: first } : {}),
+    ...(rest.length ? { last_name: rest.join(" ") } : {}),
+    ...(r.email ? { email: r.email } : {}),
+    company_name: r.companyName,
+  };
+}
 export function buildPricedPayload(
   snapshot: DraftSnapshot,
   rawMappings: ServiceMapping[],
@@ -34,12 +45,15 @@ export function buildPricedPayload(
     operationKey.length > 200
   )
     throw new Error("invalid_provider_scope");
-  if (
-    snapshot.compositionVersion !== undefined &&
-    snapshot.compositionVersion !== compositionVersion
-  )
+  const version = snapshot.compositionVersion;
+  if (version !== undefined && !supportedCompositions.includes(version))
     throw new Error("unsupported_composition");
-  const modern = snapshot.compositionVersion === compositionVersion;
+  // proposal-2 and later: presentation order and one composition marker.
+  const modern = version !== undefined;
+  // proposal-3: client-facing title, introduction, VAT wording, recipient; review
+  // questions stay in the app.
+  const clientFacing = version === "proposal-3";
+  const recipient = clientFacing ? snapshot.presentation?.recipient : undefined;
   const mappings = mappingsSchema.parse(rawMappings);
   if (
     new Set(mappings.map((m) => m.serviceId)).size !== mappings.length ||
@@ -65,20 +79,37 @@ export function buildPricedPayload(
     },
     snapshot.catalogue,
   );
-  const { compositionVersion: _composition, ...canonicalSnapshot } = snapshot;
+  // Composition and operator-approved text are not derived from the scope.
+  const {
+    compositionVersion: _composition,
+    presentation: _presentation,
+    ...canonicalSnapshot
+  } = snapshot;
   if (snapshotHash(rebuilt) !== snapshotHash(canonicalSnapshot))
     throw new Error("snapshot_tampered");
   return {
     company_id: Number(companyId),
     language: "en",
-    title_md: `Case demo — ${snapshot.report.businessName} (do not send)`,
-    description_md: `# Metascalers growth plan\n${modern && snapshot.report.mode === "live" ? "Technical-case proposal based on public-source research" : "Synthetic technical-case proposal"}. No recipient or email sending.\n\nCore one-time: EUR ${snapshot.coreOneTimeMinor / 100}. Core monthly: EUR ${snapshot.coreMonthlyMinor / 100}/month. Optional one-time: EUR ${snapshot.optionalOneTimeMinor / 100}. Optional monthly: EUR ${snapshot.optionalMonthlyMinor / 100}/month.\n\nIllustrative prices excluding tax. Review suitability, access, budget, scope and billing before sending.\n${snapshot.questions.join("\n")}`,
+    title_md: clientFacing
+      ? `${snapshot.report.businessName} — growth plan from ${agencyProfile.name}`
+      : `Case demo — ${snapshot.report.businessName} (do not send)`,
+    description_md: clientFacing
+      ? [
+          snapshot.presentation?.intro,
+          (snapshot.report.mode === "synthetic"
+            ? "Example proposal for a fictional business. "
+            : "") + "Prices exclude VAT.",
+        ]
+          .filter(Boolean)
+          .join("\n\n")
+      : `# Metascalers growth plan\n${modern && snapshot.report.mode === "live" ? "Technical-case proposal based on public-source research" : "Synthetic technical-case proposal"}. No recipient or email sending.\n\nCore one-time: EUR ${snapshot.coreOneTimeMinor / 100}. Core monthly: EUR ${snapshot.coreMonthlyMinor / 100}/month. Optional one-time: EUR ${snapshot.optionalOneTimeMinor / 100}. Optional monthly: EUR ${snapshot.optionalMonthlyMinor / 100}/month.\n\nIllustrative prices excluding tax. Review suitability, access, budget, scope and billing before sending.\n${snapshot.questions.join("\n")}`,
+    ...(recipient ? { recipient: recipientInput(recipient) } : {}),
     tax_options: { mode: "simplified" as const, tax_included: false },
     data: {
       case_operation: operationKey,
       case_snapshot: snapshotHash(snapshot),
       case_catalogue: snapshot.catalogueVersion,
-      ...(modern ? { case_composition: compositionVersion } : {}),
+      ...(modern ? { case_composition: version } : {}),
     },
     blocks: (modern
       ? presentServices(snapshot.items, snapshot.catalogue)
@@ -90,7 +121,7 @@ export function buildPricedPayload(
         content_id: m.variationId,
         type: "product-block" as const,
         title: i.title + (i.billing === "monthly" ? " — per month" : ""),
-        description: `${i.deliverables.join("\n")}${i.rationale ? `\n\nWhy: ${i.rationale}` : ""}\n\nExcludes: ${i.exclusions.join("; ")}\n\nBilling: ${i.billing === "monthly" ? "EUR " + i.unitPriceMinor / 100 + " per month; recurring monthly service" : "One-time"}; illustrative prices excluding tax.`,
+        description: `${i.deliverables.join("\n")}${i.rationale ? `\n\nWhy: ${i.rationale}` : ""}\n\nExcludes: ${i.exclusions.join("; ")}\n\nBilling: ${i.billing === "monthly" ? "EUR " + i.unitPriceMinor / 100 + " per month; recurring monthly service" : "One-time"}; ${clientFacing ? "prices exclude VAT." : "illustrative prices excluding tax."}`,
         // Proposales fills an empty list with the library item's image (observed
         // 10 October), so a lead-only image cannot be expressed at creation.
         image_uuids: [m.imageUuid],
@@ -123,6 +154,8 @@ export function verifyPricedProposal(
       company_id: z.number(),
       status: z.string().nullable(),
       recipient_is_set: z.boolean(),
+      recipient_email: z.string().nullable().optional(),
+      recipient_company_name: z.string().nullable().optional(),
       currency: z.string(),
       data: z.record(z.string(), z.unknown()),
       tax_options: z.object({ mode: z.string(), tax_included: z.boolean() }),
@@ -134,7 +167,16 @@ export function verifyPricedProposal(
   const issues: string[] = [];
   if (p.company_id !== expected.company_id) issues.push("company");
   if (p.status !== null && p.status !== "draft") issues.push("status");
-  if (p.recipient_is_set) issues.push("recipient");
+  // The recipient must be exactly what the operator chose, or absent.
+  const wanted = "recipient" in expected ? expected.recipient : undefined;
+  if (
+    wanted
+      ? !p.recipient_is_set ||
+        (!!wanted.email && p.recipient_email?.toLowerCase() !== wanted.email.toLowerCase()) ||
+        (p.recipient_company_name != null && p.recipient_company_name !== wanted.company_name)
+      : p.recipient_is_set
+  )
+    issues.push("recipient");
   if (p.currency !== snapshot.currency) issues.push("currency");
   if (
     p.data.case_operation !== key ||

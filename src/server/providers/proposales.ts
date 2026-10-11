@@ -41,6 +41,8 @@ const proposalSchema = z.object({
   title_md: z.string().nullable().optional(),
   description_md: z.string().nullable().optional(),
   recipient_is_set: z.boolean().optional(),
+  recipient_email: z.string().nullable().optional(),
+  recipient_company_name: z.string().nullable().optional(),
   blocks: z.array(z.unknown()).optional(),
   tax_options: z.record(z.string(), z.unknown()).optional(),
 });

@@ -104,6 +104,7 @@ export function safeError(error: unknown) {
     "research_search_partial",
     "research_report_failed",
     "research_identify_failed",
+    "research_intro_failed",
     "research_search_failed",
   ];
 

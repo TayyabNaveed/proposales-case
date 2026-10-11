@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  proposalPresentationSchema,
+  type ProposalPresentation,
+} from "../domain/offers.js";
 import { account, smallJson, safeError } from "./http.js";
 import { adjustmentsSchema, type StoredDraftSnapshot } from "./drafts.js";
 import type { RecommendationRecord } from "./recommendations.js";
@@ -21,6 +25,8 @@ const draftRequest = z
     requestId: z.uuid(),
     recommendationId: z.uuid(),
     selections: adjustmentsSchema,
+    // The operator-approved introduction and recipient (proposal-3).
+    presentation: proposalPresentationSchema.optional(),
   })
   .strict();
 export function publicRecommendation(r: RecommendationRecord) {
@@ -56,6 +62,7 @@ export function createApiHandlers(
       recommendationId: string,
       selections: unknown,
       scope: string,
+      presentation?: ProposalPresentation,
     ): Promise<StoredDraftSnapshot>;
     getSnapshot(id: string, scope: string): Promise<StoredDraftSnapshot>;
     findSnapshot(
@@ -118,6 +125,7 @@ export function createApiHandlers(
           body.recommendationId,
           body.selections,
           scope,
+          body.presentation,
         );
         const outcome = await deps.draft(saved.id, scope, "create");
         return json({ snapshot: saved, outcome });

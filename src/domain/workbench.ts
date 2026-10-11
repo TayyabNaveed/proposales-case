@@ -5,7 +5,7 @@ import {
   type SelectionResult,
   type ScopeResult,
 } from "./selection.js";
-import { buildDraftSnapshot } from "./offers.js";
+import { buildDraftSnapshot, proposalPresentationSchema } from "./offers.js";
 import { catalogueV2, type CatalogueV2 } from "./catalogue.js";
 import type { ReportV2 } from "./reports.js";
 export const adjustmentSchema = z
@@ -31,6 +31,8 @@ export function restorePendingGeneration(saved: string | null) {
           requestId: z.uuid(),
           recommendationId: z.uuid(),
           selections: adjustmentSchema,
+          // Saved with the request so a retry sends exactly the same text.
+          presentation: proposalPresentationSchema.optional(),
         })
         .strict()
         .parse(JSON.parse(saved));

@@ -42,6 +42,14 @@ Unverified candidates are removed and their rejection codes kept. Identity is co
 
 Code cannot judge meaning. If an excerpt names the business next to a place that refers to something else, the model's judgement decides, and the quotes are shown so a person can see why. `evals/identity` measures this on fictional cases; real-business cases stay private.
 
+## Proposal composition
+
+- **New drafts use `proposal-3`.** The title is the business name with "growth plan from <agency>". The description is the operator-approved introduction plus "Prices exclude VAT."; fictional examples say so. The recipient is optional. Review questions are shown in the app, never in the proposal.
+- **Immutable request.** The introduction and recipient are part of the immutable request and snapshot. A repeated request with different text is a conflict.
+- **Read-back check.** It confirms the recipient matches what the operator entered, or is absent.
+- **Earlier drafts are untouched.** `proposal-2` and legacy drafts keep their exact payload and checks.
+- **Operator-added services** carry no "Why" line. The agency description lives in `domain/agency.ts`.
+
 ## Identities and compatibility
 
 `server/canonical.ts` preserves historical canonical JSON/hash bytes. Alphabetic service order remains canonical. `domain/presentation.ts` independently orders core/foundational work, supporting work, monthly services and optional extras.

@@ -1,5 +1,8 @@
+"use client";
+import { useState } from "react";
 import { money } from "../../domain/catalogue";
 import type { ProposalWorkflow } from "./useProposalWorkflow";
+import { CreateProposalDialog } from "./CreateProposalDialog";
 export function ProposalView({
   flow,
   authenticated,
@@ -9,14 +12,26 @@ export function ProposalView({
   authenticated: boolean;
   blocked: boolean;
 }) {
+  const [creating, setCreating] = useState(false);
   return (
     <section className="review">
+      {creating && flow.report && (
+        <CreateProposalDialog
+          flow={flow}
+          onExpired={flow.expire}
+          onCancel={() => setCreating(false)}
+          onConfirm={(p) => {
+            setCreating(false);
+            void flow.generate(p);
+          }}
+        />
+      )}
       <div>
         <p className="eyebrow">03 / CREATE & REVIEW</p>
         <h2>Your proposal, ready to review.</h2>
         <p>
-          Create an unsent draft, then check suitability, scope, prices and
-          recipient details in Proposales.
+          Add a short introduction and the recipient, then create an unsent
+          draft and review it in Proposales before sending.
         </p>
         <div className="totals">
           <div>
@@ -56,7 +71,7 @@ export function ProposalView({
               <button
                 className="primary"
                 disabled={!flow.canGenerate || blocked}
-                onClick={() => void flow.generate()}
+                onClick={() => setCreating(true)}
               >
                 Create proposal
               </button>

@@ -1,6 +1,9 @@
 # Prompt foundation
 
-Active families are `business-identity-1` (`src/prompts/business-identity/v1.ts`), `research-report-6` (`research-report/v6.ts`) and `service-selector-1` (`service-recommendation/v1.ts`). `active.ts` pins them.
+Active families are `business-identity-1` (`src/prompts/business-identity/v1.ts`), `research-report-7` (`research-report/v7.ts`), `service-selector-1` (`service-recommendation/v1.ts`) and `proposal-intro-1` (`proposal-intro/v1.ts`). `active.ts` pins them.
+
+- `research-report-7` adds how to treat the operator's client notes (an attributed source, never public information).
+- `proposal-intro-1` drafts a three-to-four-sentence introduction. Each sentence lists its references (finding IDs, `notes`, `service:<id>`, `agency`). `domain/intro.ts` keeps only sentences whose references exist, at most five. It is written as a follow-up when the client's goals are known, and as a first approach otherwise. The operator edits it before creating the proposal.
 
 - `business-identity-1` is the identify stage. It returns up to three candidates with quoted name and location evidence and the sources it believes are each business's own website. `domain/identity.ts` verifies them (`identity-validation-1`).
 - `research-report-6` writes the report for the operator-chosen business from that business's sources only. It no longer decides identity; its wording is otherwise unchanged from v5.
