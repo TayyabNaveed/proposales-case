@@ -4,19 +4,14 @@ import {
   checkCode,
   loginBuckets,
   makeSession,
-  readSession,
   sessionCookieSecure,
 } from "../../../server/access";
 import { sameOrigin, smallJson, safeError } from "../../../server/http";
 import { consumeLoginAttempt } from "../../../server/access-store";
 import { database } from "../../../server/runtime";
+import { hasSession } from "../../../server/session";
 export async function GET() {
-  const secret = process.env.SESSION_SECRET;
-  return Response.json({
-    authenticated:
-      !!secret &&
-      !!readSession((await cookies()).get("case_session")?.value, secret),
-  });
+  return Response.json({ authenticated: await hasSession() });
 }
 export async function POST(req: Request) {
   try {

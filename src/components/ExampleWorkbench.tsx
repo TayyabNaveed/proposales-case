@@ -68,15 +68,19 @@ function Journey({
     </>
   );
 }
-export function ExampleWorkbench() {
-  const session = useDemoSession(),
+export function ExampleWorkbench({
+  initialAuthenticated,
+}: {
+  initialAuthenticated: boolean;
+}) {
+  const session = useDemoSession(initialAuthenticated),
     live = useProposalWorkflow(null, session),
     examples = useProposalWorkflow(reports[0], session);
   const [view, setView] = useState<View>("research"),
     [filter, setFilter] = useState<ProposalStatus | null>(null),
     // The landing page shows until access is unlocked or the visitor chooses
     // the examples; afterwards the workspace stays mounted so work is kept.
-    [entered, setEntered] = useState(false),
+    [entered, setEntered] = useState(initialAuthenticated),
     [detailsSlot, setDetailsSlot] = useState<HTMLElement | null>(null),
     [code, setCode] = useState(""),
     [researchBusy, setResearchBusy] = useState(false),
@@ -158,8 +162,8 @@ export function ExampleWorkbench() {
     if (session.authenticated) setEntered(true);
     // Access ended while researching: unlock again on the landing page. The
     // workspace stays mounted, so the work in progress is kept.
-    else if (!session.checking && view !== "examples") setEntered(false);
-  }, [session.authenticated, session.checking]);
+    else if (view !== "examples") setEntered(false);
+  }, [session.authenticated]);
   const crossBlocked =
     live.locked || examples.locked || !!saved || recoveryBlocked;
   const proposals = useProposals(
@@ -205,9 +209,7 @@ export function ExampleWorkbench() {
           </ol>
           <section className="access-card" aria-labelledby="access-title">
             <h2 id="access-title">Unlock access</h2>
-            {session.checking ? (
-              <p>Checking access…</p>
-            ) : session.authenticated ? (
+            {session.authenticated ? (
               <button className="primary" onClick={() => setEntered(true)}>
                 Continue
               </button>
@@ -369,7 +371,7 @@ export function ExampleWorkbench() {
             </header>
             <ResearchPanel
               authenticated={session.authenticated}
-              blocked={crossBlocked || session.checking}
+              blocked={crossBlocked}
               onExpired={session.expire}
               onReport={live.adopt}
               onRestore={(r) => {

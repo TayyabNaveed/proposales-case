@@ -1,4 +1,4 @@
-import { trustedEditorUrl } from "../provider-url.js";
+import { trustedEditorUrl, trustedPdfUrl } from "../provider-url.js";
 import { validateImageUrl, type ContentSummary } from "../provider-assets.js";
 import {
   buildOptionalDefaultsPatch,
@@ -37,6 +37,7 @@ const proposalSchema = z.object({
   url: z.unknown().optional().transform(trustedEditorUrl),
   status: z.string().nullable(),
   status_changed_at: z.number().nullable().optional(),
+  pdf_url: z.unknown().optional().transform(trustedPdfUrl),
   data: z.record(z.string(), z.unknown()).nullish(),
   currency: z.string().optional(),
   title_md: z.string().nullable().optional(),

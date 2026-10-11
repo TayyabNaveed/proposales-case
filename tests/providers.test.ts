@@ -160,6 +160,25 @@ test("known UUID survives a missing or unsafe editor URL after creation", async 
     assert.equal(result.url, undefined);
   }
 });
+test("an accepted proposal's PDF link is kept only on Proposales' PDF paths", async () => {
+  const read = (pdf_url: unknown) =>
+    client(async () =>
+      json({ data: { uuid, company_id: 7, status: "accepted", data: {}, pdf_url } }),
+    ).getDraft(uuid);
+  assert.equal(
+    (await read("https://esign.proposales.com/pdf/" + uuid)).pdf_url,
+    "https://esign.proposales.com/pdf/" + uuid,
+  );
+  for (const unsafe of [
+    "https://evil.example/pdf/x",
+    "http://esign.proposales.com/pdf/x",
+    "https://esign.proposales.com/proposals/x/edit",
+    "https://user:pw@esign.proposales.com/pdf/x",
+    42,
+    undefined,
+  ])
+    assert.equal((await read(unsafe)).pdf_url, undefined);
+});
 test("malformed nonempty library is rejected instead of counted", async () => {
   await assert.rejects(
     () =>

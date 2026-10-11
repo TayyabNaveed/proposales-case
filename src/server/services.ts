@@ -248,9 +248,22 @@ export function proposalHandlers() {
           apiKey = process.env.PROPOSALES_API_KEY ?? "";
         if (!apiKey || !companyId) throw new Error("provider_configuration_missing");
         const provider = createProposales({ apiKey, companyId });
-        const proposals = await listProposals(database(), scope, companyId, async (id) => {
-          const p = await provider.getDraft(id);
-          return { status: p.status, statusChangedAt: p.status_changed_at ?? null };
+        // Search returns the status-aware link (editor for a draft, view once
+        // accepted) that a plain read omits. The read is the fallback, and also
+        // supplies the PDF link, which search leaves out (observed 11 October).
+        const proposals = await listProposals(database(), scope, companyId, async (id, key) => {
+          const match = (await provider.findByOperation(key)).find((p) => p.uuid === id);
+          const read =
+            !match || (match.status !== "draft" && !match.pdf_url)
+              ? await provider.getDraft(id)
+              : null;
+          const p = read ?? match!;
+          return {
+            status: p.status,
+            statusChangedAt: p.status_changed_at ?? null,
+            pdfUrl: (read ?? match)?.pdf_url ?? null,
+            url: match?.url ?? null,
+          };
         });
         return Response.json({ proposals }, { headers: { "Cache-Control": "no-store" } });
       } catch (e) {

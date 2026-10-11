@@ -256,6 +256,8 @@ createServer(async (req, res) => {
           editorUrl: "https://secure.proposales.com/synthetic-browser-qa",
           status,
           statusChangedAt: null,
+          pdfUrl: status === "accepted" ? "https://esign.proposales.com/pdf/synthetic-browser-qa" : null,
+          liveUrl: "https://secure.proposales.com/proposals/synthetic-browser-qa/" + (status === "accepted" ? "view" : "edit"),
         });
         reply(res, {
           proposals: [

@@ -49,9 +49,15 @@ test("the proposals list joins drafts to their Proposales proposal, live status 
     );
     const notCreated = await drafts.save(randomUUID(), rec.record.id, scope, { ...snapshot, presentation: { intro: "Other." } });
     await drafts.save(randomUUID(), rec.record.id, "someone-else", snapshot);
-    const rows = await listProposals(pool, scope, "42", async (id) => {
+    const rows = await listProposals(pool, scope, "42", async (id, key) => {
       assert.equal(id, providerId);
-      return { status: "accepted", statusChangedAt: 1760000000 };
+      assert.equal(key, `draft:42:${created.id}:${created.snapshotHash}`);
+      return {
+        status: "accepted",
+        statusChangedAt: 1760000000,
+        pdfUrl: "https://esign.proposales.com/pdf/x",
+        url: "https://secure.proposales.com/proposals/x/view",
+      };
     }, schema);
     assert.equal(rows.length, 2);
     const [latest, first] = rows;
@@ -60,6 +66,8 @@ test("the proposals list joins drafts to their Proposales proposal, live status 
     assert.equal(first.status, "accepted");
     assert.equal(first.statusChangedAt, new Date(1760000000 * 1000).toISOString());
     assert.equal(first.editorUrl, "https://secure.proposales.com/proposals/x/edit");
+    assert.equal(first.pdfUrl, "https://esign.proposales.com/pdf/x");
+    assert.equal(first.liveUrl, "https://secure.proposales.com/proposals/x/view");
     assert.equal(first.businessName, report.businessName);
     assert.deepEqual(first.recipient, { companyName: "Workshop AB", email: "info@workshop.example" });
     assert.deepEqual(first.changes, { kept: kept.length, removed: ["faq-content"], added: ["social-management"] });

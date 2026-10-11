@@ -923,9 +923,11 @@ blockquote {
   font-size: 17px;
   font-variant-numeric: tabular-nums;
 }
-.proposal-row .button-link {
-  display: inline-block;
-  margin-top: 8px;
+.proposal-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
 }
 .status-pill {
   display: inline-flex;

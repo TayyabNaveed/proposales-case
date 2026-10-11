@@ -25,10 +25,23 @@ export type ProposalRow = {
   questions: string[];
   providerId: string | null;
   editorUrl: string | null;
+  // Proposales' current link for the proposal: the editor for a draft, its view
+  // once accepted. Read live; null when unavailable.
+  liveUrl: string | null;
+  // The accepted document, when Proposales provides one; read live with status.
+  pdfUrl: string | null;
   status: ProposalStatus;
   statusChangedAt: string | null;
 };
-type StatusReader = (providerId: string) => Promise<{ status: string | null; statusChangedAt: number | null }>;
+type StatusReader = (
+  providerId: string,
+  operationKey: string,
+) => Promise<{
+  status: string | null;
+  statusChangedAt: number | null;
+  pdfUrl?: string | null;
+  url?: string | null;
+}>;
 const known = new Set(["draft", "active", "accepted", "rejected", "expired", "withdrawn", "replaced"]);
 
 export async function listProposals(
@@ -44,7 +57,7 @@ export async function listProposals(
   // The operation key is deterministic per snapshot (see workflow.ts).
   const r = await pool.query(
     `SELECT d.id, d.created_at, d.snapshot, r.result->'selection'->'items' AS suggested,
-            o.state AS op_state, o.provider_id, o.editor_url
+            d.snapshot_hash, o.state AS op_state, o.provider_id, o.editor_url
        FROM "${schema}".draft_snapshots d
        LEFT JOIN "${schema}".recommendation_runs r ON r.id = d.recommendation_id
        LEFT JOIN "${schema}".provider_operations o
@@ -54,7 +67,9 @@ export async function listProposals(
       LIMIT $3`,
     [scope, companyId, limit],
   );
+  const keys = new Map<string, string>();
   const rows = r.rows.map((x): ProposalRow => {
+    keys.set(x.id, `draft:${companyId}:${x.id}:${x.snapshot_hash}`);
     const s = x.snapshot as DraftSnapshot;
     const suggested = new Set<string>((x.suggested ?? []).map((i: { serviceId: string }) => i.serviceId));
     const chosen = s.items.map((i) => i.serviceId);
@@ -78,6 +93,8 @@ export async function listProposals(
       questions: s.questions,
       providerId: x.op_state === "confirmed" ? x.provider_id : null,
       editorUrl: x.op_state === "confirmed" ? x.editor_url : null,
+      liveUrl: null,
+      pdfUrl: null,
       status: x.op_state === "confirmed" ? "unavailable" : "not_created",
       statusChangedAt: null,
     };
@@ -88,9 +105,11 @@ export async function listProposals(
     await Promise.all(
       pending.slice(i, i + 4).map(async (row) => {
         try {
-          const live = await readStatus(row.providerId!);
+          const live = await readStatus(row.providerId!, keys.get(row.snapshotId)!);
           row.status = live.status && known.has(live.status) ? (live.status as ProposalStatus) : "unavailable";
           row.statusChangedAt = live.statusChangedAt ? new Date(live.statusChangedAt * 1000).toISOString() : null;
+          row.pdfUrl = live.pdfUrl ?? null;
+          row.liveUrl = live.url ?? null;
         } catch {
           row.status = "unavailable";
         }

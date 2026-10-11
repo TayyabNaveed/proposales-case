@@ -4,6 +4,13 @@ import { friendlyDate } from "./api";
 import type { ProposalStatus } from "../../server/proposals";
 import { statusLabel, statusOrder, type Proposals } from "./useProposals";
 
+// Named after where the link goes: Proposales' view, or its editor.
+const linkLabel = (url: string, status: ProposalStatus) =>
+  new URL(url).pathname.endsWith("/view")
+    ? "View in Proposales"
+    : status === "draft"
+      ? "Open draft in Proposales"
+      : "Open in Proposales editor";
 const title = (id: string) => catalogueV2.services.find((s) => s.id === id)?.title ?? id;
 
 // Proposals created from this app, with live status read from Proposales.
@@ -68,7 +75,8 @@ export function ProposalsList({
             {p.changes.removed.length ? ` · removed ${p.changes.removed.map(title).join(", ")}` : ""}
             {p.changes.added.length ? ` · added by you ${p.changes.added.map(title).join(", ")}` : ""}
           </p>
-          {!!p.questions.length && (
+          {/* Points to confirm before sending; moot once the client has it. */}
+          {!!p.questions.length && ["draft", "not_created", "unavailable"].includes(p.status) && (
             <div className="principle">
               <h3>To confirm with the client</h3>
               <ul>
@@ -78,11 +86,23 @@ export function ProposalsList({
               </ul>
             </div>
           )}
-          {p.editorUrl && (
-            <a className="button-link" href={p.editorUrl} target="_blank" rel="noopener noreferrer">
-              Open in Proposales
-            </a>
-          )}
+          <div className="proposal-links">
+            {p.pdfUrl && (
+              <a className="button-link primary" href={p.pdfUrl} target="_blank" rel="noopener noreferrer">
+                {p.status === "accepted" ? "View accepted proposal (PDF)" : "View proposal (PDF)"}
+              </a>
+            )}
+            {(p.liveUrl ?? p.editorUrl) && (
+              <a
+                className="button-link"
+                href={(p.liveUrl ?? p.editorUrl)!}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {linkLabel(p.liveUrl ?? p.editorUrl!, p.status)}
+              </a>
+            )}
+          </div>
         </article>
       ))}
       {filter && rows && !shown?.length && (
