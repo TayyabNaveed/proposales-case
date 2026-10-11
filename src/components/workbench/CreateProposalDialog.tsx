@@ -141,6 +141,8 @@ export function CreateProposalDialog({
               (emails.length
                 ? "Suggested from the business’s public sources."
                 : "No email found in the sources.")}{" "}
+            {!email.trim() &&
+              "Proposales needs an email for a recipient, so without one the draft is created without a recipient. "}
             Nothing is sent; you send from Proposales.
           </small>
         </fieldset>

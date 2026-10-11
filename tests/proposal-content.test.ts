@@ -119,3 +119,14 @@ test("email suggestions come only from the chosen business's sources, own domain
     "juniper@gmail.com",
   ]);
 });
+
+test("a recipient without an email is not sent, because Proposales requires one", () => {
+  const companyOnly = {
+    ...base(),
+    compositionVersion: "proposal-3" as const,
+    presentation: { intro: "Hi.", recipient: { companyName: "Avalon Innovation" } },
+  };
+  const p = buildPricedPayload(companyOnly, maps(companyOnly), "1", "op");
+  assert.equal("recipient" in p, false);
+  assert.deepEqual(verifyPricedProposal(asProvider(p), companyOnly, maps(companyOnly), "1", "op").issues, []);
+});

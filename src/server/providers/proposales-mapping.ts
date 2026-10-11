@@ -60,7 +60,12 @@ export function buildPricedPayload(
   // proposal-3: client-facing title, introduction, VAT wording, recipient; review
   // questions stay in the app.
   const clientFacing = version === "proposal-3" || version === "proposal-4";
-  const recipient = clientFacing ? snapshot.presentation?.recipient : undefined;
+  // Proposales requires an email for a recipient (INVALID_CONTACT_EMAIL, observed
+  // 11 October); without one the draft is created without a recipient.
+  const recipient =
+    clientFacing && snapshot.presentation?.recipient?.email
+      ? snapshot.presentation.recipient
+      : undefined;
   const mappings = mappingsSchema.parse(
     version === "proposal-4"
       ? checkedCompositionAssets(snapshot, companyId).services
