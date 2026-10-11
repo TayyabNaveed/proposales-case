@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title"><title id="title">Website and customer experience — a composed digital foundation</title><defs>
+<linearGradient id="paper" x2="1" y2="1"><stop stop-color="#FAF8F4"/><stop offset="1" stop-color="#EEE9F0"/></linearGradient>
+<linearGradient id="violet" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#B89BD8"/><stop offset=".48" stop-color="#8157B2"/><stop offset="1" stop-color="#4B306D"/></linearGradient>
+<linearGradient id="white" x2=".8" y2="1"><stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#DED6E8"/></linearGradient>
+<linearGradient id="ink" x2="1" y2="1"><stop stop-color="#453451"/><stop offset="1" stop-color="#20172E"/></linearGradient>
+<linearGradient id="edge" x2="1" y2="0"><stop stop-color="#D7C7E7"/><stop offset="1" stop-color="#F8F5FA"/></linearGradient>
+<radialGradient id="halo"><stop stop-color="#C9B5E0" stop-opacity=".42"/><stop offset="1" stop-color="#C9B5E0" stop-opacity="0"/></radialGradient>
+<filter id="shadow" x="-60%" y="-60%" width="220%" height="240%"><feDropShadow dx="0" dy="24" stdDeviation="22" flood-color="#352144" flood-opacity=".14"/></filter>
+</defs><rect width="100%" height="100%" fill="url(#paper)"/><ellipse cx="810" cy="530" rx="600" ry="440" fill="url(#halo)"/>
+<g filter="url(#shadow)"><rect x="460" y="247" width="700" height="490" rx="34" fill="url(#edge)" transform="rotate(7 810 492)"/>
+<rect x="387" y="216" width="700" height="490" rx="30" fill="url(#white)" stroke="#D2C6DE" stroke-width="2"/>
+<path d="M387 295H1087" stroke="#DCD3E4" stroke-width="2"/><circle cx="430" cy="255" r="6" fill="#7951B0"/><circle cx="454" cy="255" r="6" fill="#C5B5D7"/><circle cx="478" cy="255" r="6" fill="#DCD3E4"/>
+<rect x="436" y="339" width="289" height="245" rx="18" fill="url(#violet)"/>
+<path d="M489 542V479A91 91 0 0 1 671 479V542" fill="none" stroke="#E5D8F1" stroke-width="20"/>
+<path d="M770 367H1026M770 399H970" stroke="#463353" stroke-width="12" stroke-linecap="round"/><path d="M770 453H1011M770 482H996M770 511H940" stroke="#C1B4CF" stroke-width="7" stroke-linecap="round"/>
+<rect x="770" y="550" width="137" height="35" rx="17" fill="#7951B0"/><path d="M436 634H703M770 634H1024" stroke="#D6CBDF" stroke-width="8" stroke-linecap="round"/>
+<rect x="990" y="508" width="167" height="257" rx="26" fill="url(#ink)"/><rect x="1005" y="528" width="137" height="205" rx="15" fill="url(#white)"/><rect x="1023" y="553" width="101" height="82" rx="9" fill="url(#violet)"/><path d="M1025 662H1118M1025 684H1088" stroke="#B6A4C8" stroke-width="6" stroke-linecap="round"/></g></svg>

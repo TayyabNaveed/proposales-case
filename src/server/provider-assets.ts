@@ -75,13 +75,31 @@ export async function seedService(options: {
     listContent(): Promise<ContentSummary[]>;
   };
 }): Promise<AssetRecord> {
-  const { companyId, serviceId, catalogue, store, api } = options;
-  if (!/^[1-9]\d*$/.test(companyId) || !Number.isSafeInteger(Number(companyId)))
+  const content = serviceContent(options.catalogue, options.serviceId);
+  return seedContentAsset({
+    ...options,
+    content,
+    key: `company:${options.companyId}:catalogue:${options.catalogue.version}:service:${options.serviceId}`,
+  });
+}
+// Shared admission/verification mechanism; separate callers own their namespaces.
+export async function seedContentAsset(options: {
+  companyId: string;
+  key: string;
+  content: { title: string; description: string };
+  imageUrl: string;
+  store: AssetStore;
+  api: Parameters<typeof seedService>[0]["api"];
+}): Promise<AssetRecord> {
+  const { companyId, key, content, store, api } = options;
+  if (
+    !/^[1-9]\d*$/.test(companyId) ||
+    !Number.isSafeInteger(Number(companyId)) ||
+    !key.startsWith(`company:${companyId}:`)
+  )
     throw new Error("invalid_company");
   const imageUrl = validateImageUrl(options.imageUrl);
-  const content = serviceContent(catalogue, serviceId),
-    key = `company:${companyId}:catalogue:${catalogue.version}:service:${serviceId}`,
-    hash = snapshotHash({ content, imageUrl });
+  const hash = snapshotHash({ content, imageUrl });
   const admission = await store.claim(key, hash);
   if (admission === "conflict") throw new Error("asset_payload_conflict");
   if (admission === "claimed") {

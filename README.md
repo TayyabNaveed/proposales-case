@@ -9,6 +9,7 @@ A focused proof of concept: turn a sourced business report into an evidence-back
 - [Technical design and scope](docs/ARCHITECTURE.md)
 - [Current implementation plan: AI service selection and real drafts](docs/superpowers/plans/2026-10-09-ai-service-proposals.md)
 - [Phase 2 API verification and operator commands](docs/PHASE-2.md)
+- [Category composition and staged activation](docs/PROPOSAL-CATEGORIES.md)
 - [Phase 3 recommendation evidence and operator commands](docs/PHASE-3.md)
 - [Evaluation explanations and limits](evals/REVIEW.md)
 - [Phase 0 verification results](docs/PHASE-0.md)

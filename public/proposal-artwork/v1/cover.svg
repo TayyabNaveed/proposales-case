@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title"><title id="title">Metascalers proposal cover — considered systems, intelligent growth</title><defs>
+<linearGradient id="paper" x2="1" y2="1"><stop stop-color="#FAF8F4"/><stop offset="1" stop-color="#EEE9F0"/></linearGradient>
+<linearGradient id="violet" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#B89BD8"/><stop offset=".48" stop-color="#8157B2"/><stop offset="1" stop-color="#4B306D"/></linearGradient>
+<linearGradient id="white" x2=".8" y2="1"><stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#DED6E8"/></linearGradient>
+<linearGradient id="ink" x2="1" y2="1"><stop stop-color="#453451"/><stop offset="1" stop-color="#20172E"/></linearGradient>
+<linearGradient id="edge" x2="1" y2="0"><stop stop-color="#D7C7E7"/><stop offset="1" stop-color="#F8F5FA"/></linearGradient>
+<radialGradient id="halo"><stop stop-color="#C9B5E0" stop-opacity=".42"/><stop offset="1" stop-color="#C9B5E0" stop-opacity="0"/></radialGradient>
+<filter id="shadow" x="-60%" y="-60%" width="220%" height="240%"><feDropShadow dx="0" dy="24" stdDeviation="22" flood-color="#352144" flood-opacity=".14"/></filter>
+</defs><rect width="100%" height="100%" fill="url(#paper)"/><ellipse cx="1340" cy="530" rx="600" ry="440" fill="url(#halo)"/>
+<path d="M80 897H1840" stroke="#DDD3E5" stroke-width="1"/>
+<g filter="url(#shadow)"><path d="M1050 841V572A250 250 0 0 1 1550 572V841H1453V572A153 153 0 0 0 1147 572V841Z" fill="url(#ink)"/>
+<path d="M980 798V529A250 250 0 0 1 1480 529V798H1383V529A153 153 0 0 0 1077 529V798Z" fill="url(#violet)"/>
+<path d="M1112 841V639A183 183 0 0 1 1478 639V841H1399V639A104 104 0 0 0 1191 639V841Z" fill="url(#edge)"/>
+<path d="M1244 841V711A117 117 0 0 1 1478 711V841H1399V711A38 38 0 0 0 1323 711V841Z" fill="url(#violet)"/>
+<ellipse cx="1470" cy="272" rx="45" ry="80" transform="rotate(42 1470 272)" fill="url(#violet)"/>
+<path d="M1420 366Q1434 321 1470 272" fill="none" stroke="#9977B6" stroke-width="3"/></g></svg>

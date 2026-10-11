@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { dailyLimit } from "./limits.js";
 import { compositionVersion } from "../domain/presentation.js";
+import {
+  compositionAssetsSchema,
+  type CompositionAssets,
+} from "../domain/proposal-groups.js";
+import { checkedCompositionAssets } from "./providers/category-blocks.js";
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import { reports, type ReportV2 } from "../domain/reports.js";
@@ -57,7 +62,9 @@ export function prepareDraftSnapshot(
     ),
     compositionVersion,
     // Without approved text, the proposal still gets the VAT line and title.
-    presentation: proposalPresentationSchema.parse(presentation ?? { intro: "" }),
+    presentation: proposalPresentationSchema.parse(
+      presentation ?? { intro: "" },
+    ),
   };
 }
 export type StoredDraftSnapshot = {
@@ -163,6 +170,7 @@ export function createDraftService(
     reports?: ReportV2[];
     resolveReport?: (id: string, scope: string) => Promise<ReportV2>;
     catalogue?: CatalogueV2;
+    compositionAssets?: (snapshot: DraftSnapshot) => Promise<CompositionAssets>;
   },
 ) {
   const store = createDraftStore(pool, options.schema),
@@ -194,10 +202,13 @@ export function createDraftService(
         const samePresentation =
           !existing.snapshot.presentation ||
           snapshotHash(existing.snapshot.presentation) ===
-            snapshotHash(proposalPresentationSchema.parse(presentation ?? { intro: "" }));
+            snapshotHash(
+              proposalPresentationSchema.parse(presentation ?? { intro: "" }),
+            );
         if (
           existing.recommendationId !== recommendationId ||
-          snapshotHash(canonical(requested)) !== snapshotHash(canonical(saved)) ||
+          snapshotHash(canonical(requested)) !==
+            snapshotHash(canonical(saved)) ||
           !samePresentation
         )
           throw new Error("draft_request_conflict");
@@ -215,7 +226,7 @@ export function createDraftService(
             ? await options.resolveReport(recommendation.report.id, accessScope)
             : undefined);
       if (!report) throw new Error("stale_recommendation");
-      const snapshot = prepareDraftSnapshot(
+      let snapshot = prepareDraftSnapshot(
         recommendation,
         selections,
         report,
@@ -224,6 +235,17 @@ export function createDraftService(
         options.model,
         presentation,
       );
+      if (options.compositionAssets) {
+        const assets = compositionAssetsSchema.parse(
+          await options.compositionAssets(snapshot),
+        );
+        snapshot = {
+          ...snapshot,
+          compositionVersion: "proposal-4",
+          compositionAssets: assets,
+        };
+        checkedCompositionAssets(snapshot, assets.companyId);
+      }
       return store.save(requestId, recommendationId, accessScope, snapshot);
     },
     store,

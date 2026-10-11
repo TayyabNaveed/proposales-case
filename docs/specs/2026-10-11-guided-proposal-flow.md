@@ -1,6 +1,6 @@
 # Guided proposal flow
 
-Status: approved direction, 11 October 2026. Phase 1 and phase 2 (other services, usage, notes, introduction, recipient) implemented; per-service images and cover pending. Each phase is reviewed before it is committed. How this spec was produced is described in [WORKFLOW](../WORKFLOW.md).
+Status: approved direction, 11 October 2026. Phase 1 and phase 2 (other services, usage, notes, introduction, recipient) implemented; category composition is prepared locally behind an activation switch; artwork hosting/import and live integration acceptance are pending. Cover/background polish is deferred. Each phase is reviewed before it is committed. How this spec was produced is described in [WORKFLOW](../WORKFLOW.md).
 
 ## Problem
 
@@ -29,7 +29,7 @@ Non-goals: sending from this app (the Proposales API has no send or status-chang
 | 5. Report | Summary, findings, open questions, sources | Writes findings from the chosen business's sources only | Drops unsupported statements; quotes must exist | — |
 | 6. Services | Suggested core and optional modules with reasons | Suggests catalogue modules and quantities | Catalogue, quantity, prerequisite and overlap checks; prices from the fixed catalogue | **Keeps, removes or reduces items** |
 | 7. Recipient | Dialog pre-filled with company and contact suggestions | — | Suggests names/emails only if quoted in the chosen business's sources | Edits or skips (non-blocking) |
-| 8. Create | Progress, then the draft link | Writes a short introduction citing verified findings | Builds the draft: ordered blocks, per-service images, recipient, background; verifies it by reading it back | — |
+| 8. Create | Progress, then the draft link | Writes a short introduction citing verified findings | Builds the draft: ordered category blocks, category images and recipient; verifies it by reading it back | — |
 | 9. Review | Open in Proposales | — | — | **Reviews, edits and sends in Proposales** |
 | 10. Track | Proposals page with live status | — | Reads status from Proposales | — |
 
@@ -62,10 +62,10 @@ Non-goals: sending from this app (the Proposales API has no send or status-chang
 
 ## Proposal design
 
-- **One image per service.** Fourteen authored SVG illustrations in a shared palette, rendered to PNG with `sharp`, hosted under `/services/` and set on each library item through Update Content. They replace the repeated graphic.
+- **Category presentation containers.** Five additional library entries carry the approved category artwork. The fourteen service definitions remain the source of scope and prices. Core services group by category and billing schedule; optional services remain independently selectable. See [category composition](../PROPOSAL-CATEGORIES.md) for the immutable snapshot contract and rollout.
 - **Order:** foundations first, then supporting work, then monthly services, with optional items last (`domain/presentation.ts`).
 - **Text:** an AI introduction from verified findings; for each service, what is included, why (with a cited finding) and billing.
-- **Cover:** a background image, if an asset reference can be obtained through the API (to be verified).
+- **Cover/background:** cover artwork is accepted provisionally. Image/video integration and further visual polish are deferred until the planned functional steps are complete.
 - **Research summary attachment (later phase):** an HTML page with the chosen business's findings, sources and visibility check.
 
 ## Visibility check (stretch phase)
@@ -91,7 +91,7 @@ Every AI call is already stored with its prompt version, fingerprints, model, ti
 | Phase | Scope | Acceptance |
 |---|---|---|
 | 1 | Identify → choose dialog → report → services | Evaluation sets pass at or above the identity baseline. The choice is recorded and drives website eligibility. Handy Heroes AB gets suggestions. Tests, build and DB checks pass. |
-| 2 | Other services and neutral add/remove log; usage line; client notes, recipient dialog, AI introduction, title, questions in app; then per-service images and cover | A real draft shows unique images, the introduction and the recipient, and passes the read-back check. Visual check in Proposales. |
+| 2 | Other services and neutral add/remove log; usage line; client notes, recipient dialog, AI introduction, title, questions in app; then category composition and artwork | A real draft shows category images, the introduction and the recipient, and passes the read-back check. Visual check in Proposales. |
 | 3 | Proposals page with live status | Lists this app's proposals; status matches Proposales. |
 | 4 | Landing instructions and UI polish | Desktop and 375px layouts, keyboard and screen-reader labels checked. |
 | 5 | AI run and choice export | The export file covers every stage; evaluation reports are reproducible. |

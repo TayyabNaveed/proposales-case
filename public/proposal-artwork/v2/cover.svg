@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+<title id="title">Metascalers proposal cover — a considered path forward</title>
+<desc id="desc">A softly sculpted violet ribbon rises through warm ivory space. The left half stays clear for the proposal title.</desc>
+<defs>
+ <linearGradient id="paper" x2="100%" y2="100%"><stop stop-color="#FCFAF7"/><stop offset="1" stop-color="#F0EBF3"/></linearGradient>
+ <radialGradient id="glow"><stop stop-color="#D3C2E5" stop-opacity=".42"/><stop offset="1" stop-color="#D3C2E5" stop-opacity="0"/></radialGradient>
+ <linearGradient id="front" x1="15%" y1="100%" x2="85%" y2="0%"><stop stop-color="#4B306D"/><stop offset=".38" stop-color="#8054AD"/><stop offset=".7" stop-color="#AD8ACD"/><stop offset="1" stop-color="#DDCDEB"/></linearGradient>
+ <linearGradient id="back" x1="0%" y1="80%" x2="100%" y2="10%"><stop stop-color="#392644"/><stop offset=".5" stop-color="#654185"/><stop offset="1" stop-color="#A881C7"/></linearGradient>
+ <linearGradient id="pearl" x1="0%" y1="100%" x2="80%" y2="0%"><stop stop-color="#C6B4D8"/><stop offset=".45" stop-color="#F9F6FC"/><stop offset="1" stop-color="#E7DDED"/></linearGradient>
+ <linearGradient id="rim" x2="100%" y2="0%"><stop stop-color="#C9ADDF" stop-opacity="0"/><stop offset=".6" stop-color="#F3EAF9"/><stop offset="1" stop-color="#EADDF4" stop-opacity=".3"/></linearGradient>
+ <filter id="shadow" x="-40%" y="-30%" width="180%" height="180%"><feDropShadow dx="12" dy="32" stdDeviation="30" flood-color="#3E2654" flood-opacity=".13"/></filter>
+</defs>
+<rect width="1920" height="1080" fill="url(#paper)"/>
+<ellipse cx="1450" cy="600" rx="630" ry="570" fill="url(#glow)"/>
+<g filter="url(#shadow)">
+ <path d="M1090 935C1288 873 1441 760 1514 631C1583 509 1513 442 1382 414C1274 391 1193 341 1263 255C1309 199 1402 169 1528 151C1380 203 1338 248 1380 294C1438 358 1647 361 1687 480C1750 668 1470 874 1199 972Z" fill="url(#back)"/>
+ <path d="M918 879C1116 831 1313 728 1400 607C1481 495 1450 438 1332 406C1209 373 1158 319 1221 245C1275 182 1397 151 1528 151C1384 172 1299 215 1289 260C1275 321 1434 326 1515 383C1594 439 1582 521 1514 631C1418 785 1239 889 1090 935Z" fill="url(#front)"/>
+ <path d="M1218 984C1429 889 1620 731 1687 571C1722 488 1706 431 1662 381C1769 451 1795 544 1745 655C1670 821 1507 950 1352 1016Z" fill="url(#pearl)"/>
+ <path d="M918 879C1116 831 1313 728 1400 607C1481 495 1450 438 1332 406C1209 373 1158 319 1221 245C1275 182 1397 151 1528 151" fill="none" stroke="url(#rim)" stroke-width="3"/>
+</g>
+</svg>

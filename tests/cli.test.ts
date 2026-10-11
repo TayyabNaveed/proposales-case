@@ -48,3 +48,31 @@ test("missing metadata search match fails discovery while preserving known draft
     { ok: true, searchFindsDraft: true },
   );
 });
+test("category dry-run emits only five planned imports without requiring credentials", () => {
+  const result = spawnSync(
+    process.execPath,
+    [
+      "--import",
+      "tsx",
+      "scripts/seed-proposal-categories.ts",
+      "--dry-run",
+      "--origin",
+      "https://proposales-case.vercel.app",
+    ],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      // No credentials: the dry run must need none.
+      env: { PATH: process.env.PATH, NODE_ENV: "test" },
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  const manifest = JSON.parse(result.stdout);
+  assert.equal(manifest.mode, "--dry-run");
+  assert.equal(manifest.assets.length, 5);
+  assert.ok(
+    manifest.assets.every((a: { imageUrl: string }) =>
+      a.imageUrl.endsWith(".png"),
+    ),
+  );
+});

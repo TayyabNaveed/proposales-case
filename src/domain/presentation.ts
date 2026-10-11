@@ -1,7 +1,11 @@
 import type { CatalogueV2 } from "./catalogue.js";
 // New snapshots use the latest composition; earlier ones keep theirs exactly.
 export const compositionVersion = "proposal-3" as const;
-export const supportedCompositions = ["proposal-2", "proposal-3"] as const;
+export const supportedCompositions = [
+  "proposal-2",
+  "proposal-3",
+  "proposal-4",
+] as const;
 export type CompositionVersion = (typeof supportedCompositions)[number];
 // Presentation only. Canonical selection order remains unchanged for identity.
 const serviceOrder = [
