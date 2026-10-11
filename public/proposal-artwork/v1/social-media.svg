@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title"><title id="title">Social media — a consistent voice across connected channels</title><defs>
+<linearGradient id="paper" x2="1" y2="1"><stop stop-color="#FAF8F4"/><stop offset="1" stop-color="#EEE9F0"/></linearGradient>
+<linearGradient id="violet" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#B89BD8"/><stop offset=".48" stop-color="#8157B2"/><stop offset="1" stop-color="#4B306D"/></linearGradient>
+<linearGradient id="white" x2=".8" y2="1"><stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#DED6E8"/></linearGradient>
+<linearGradient id="ink" x2="1" y2="1"><stop stop-color="#453451"/><stop offset="1" stop-color="#20172E"/></linearGradient>
+<linearGradient id="edge" x2="1" y2="0"><stop stop-color="#D7C7E7"/><stop offset="1" stop-color="#F8F5FA"/></linearGradient>
+<radialGradient id="halo"><stop stop-color="#C9B5E0" stop-opacity=".42"/><stop offset="1" stop-color="#C9B5E0" stop-opacity="0"/></radialGradient>
+<filter id="shadow" x="-60%" y="-60%" width="220%" height="240%"><feDropShadow dx="0" dy="24" stdDeviation="22" flood-color="#352144" flood-opacity=".14"/></filter>
+</defs><rect width="100%" height="100%" fill="url(#paper)"/><ellipse cx="810" cy="530" rx="600" ry="440" fill="url(#halo)"/>
+<path d="M498 523C498 717 1097 736 1097 503" fill="none" stroke="#CBBBD9" stroke-width="2"/>
+<g filter="url(#shadow)"><g transform="rotate(-13 582 493)"><rect x="410" y="287" width="310" height="405" rx="28" fill="url(#white)"/><rect x="433" y="311" width="264" height="238" rx="17" fill="url(#edge)"/><circle cx="565" cy="430" r="67" fill="url(#violet)"/><path d="M450 589H648M450 620H593" stroke="#BAA8CD" stroke-width="8" stroke-linecap="round"/></g>
+<g transform="rotate(12 1022 493)"><rect x="875" y="287" width="310" height="405" rx="28" fill="url(#white)"/><rect x="898" y="311" width="264" height="238" rx="17" fill="url(#violet)"/><path d="M966 460Q1029 348 1093 460" fill="none" stroke="#E6D6F2" stroke-width="20" stroke-linecap="round"/><path d="M916 589H1114M916 620H1059" stroke="#BAA8CD" stroke-width="8" stroke-linecap="round"/></g>
+<rect x="640" y="226" width="320" height="465" rx="30" fill="url(#ink)"/><rect x="663" y="250" width="274" height="280" rx="18" fill="url(#violet)"/><path d="M735 441V366A65 65 0 0 1 865 366V441Z" fill="#E2D2EE"/><path d="M690 573H889M690 606H845" stroke="#B5A0C8" stroke-width="8" stroke-linecap="round"/><circle cx="690" cy="654" r="7" fill="#BCA1D6"/></g></svg>

@@ -156,3 +156,106 @@ test("snapshot admission and provider identity/link survive concurrency, conflic
     await (c ?? a).end();
   }
 });
+
+test("category assets are pinned before save; restored requests do not read mutable assets after expiry or reconnect", async () => {
+  const { categorySnapshot } = await import("./category-fixtures.js");
+  const schema = "case_test_" + randomBytes(8).toString("hex");
+  const db = createDatabase();
+  try {
+    for (const name of ["001_operations", "003_recommendations_and_drafts"])
+      await db.query(
+        fs
+          .readFileSync("db/migrations/" + name + ".sql", "utf8")
+          .replaceAll("case_workflow", schema),
+      );
+    const report = reports[0],
+      scope = "category-test",
+      model = "deepseek-flash";
+    const recs = createRecommendationStore(db, schema);
+    const admitted = await recs.admit(
+      {
+        identity: recommendationIdentity(report, catalogueV2, scope, model),
+        report,
+        catalogue: catalogueV2,
+        accessScope: scope,
+      },
+      false,
+    );
+    await recs.finish(admitted.record.id, scope, {
+      result: recorded.recommendations[0] as any,
+    });
+    const picks = categorySnapshot().items.map(
+      ({ serviceId, quantity, disposition }) => ({
+        serviceId,
+        quantity,
+        disposition,
+      }),
+    );
+    const request = randomUUID();
+    let resolutions = 0;
+    const service = createDraftService(db, {
+      schema,
+      model,
+      compositionAssets: async () => {
+        resolutions++;
+        return categorySnapshot().compositionAssets!;
+      },
+    });
+    const saved = await service.getOrCreateDraftSnapshot(
+      request,
+      admitted.record.id,
+      picks,
+      scope,
+    );
+    assert.equal(saved.snapshot.compositionVersion, "proposal-4");
+    assert.deepEqual(
+      saved.snapshot.compositionAssets,
+      categorySnapshot().compositionAssets,
+    );
+    assert.equal(resolutions, 1);
+    const failing = createDraftService(db, {
+      schema,
+      model,
+      compositionAssets: async () => {
+        throw Error("asset_not_verified");
+      },
+    });
+    const failedRequest = randomUUID();
+    await assert.rejects(
+      failing.getOrCreateDraftSnapshot(
+        failedRequest,
+        admitted.record.id,
+        picks,
+        scope,
+      ),
+      /asset_not_verified/,
+    );
+    assert.equal(
+      await createDraftStore(db, schema).findRequest(failedRequest, scope),
+      null,
+    );
+    await db.query(
+      `UPDATE "${schema}".recommendation_runs SET expires_at=now()-interval '1 second' WHERE id=$1`,
+      [admitted.record.id],
+    );
+    const restored = await failing.getOrCreateDraftSnapshot(
+      request,
+      admitted.record.id,
+      [...picks].reverse(),
+      scope,
+    );
+    assert.deepEqual(restored, saved);
+    await assert.rejects(
+      failing.getOrCreateDraftSnapshot(
+        request,
+        admitted.record.id,
+        picks.slice(1),
+        scope,
+      ),
+      /draft_request_conflict/,
+    );
+  } finally {
+    await db.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+    await db.end();
+  }
+});

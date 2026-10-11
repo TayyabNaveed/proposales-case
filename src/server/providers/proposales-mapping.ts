@@ -6,6 +6,11 @@ import { agencyProfile } from "../../domain/agency.js";
 import { z } from "zod";
 import { buildDraftSnapshot, type DraftSnapshot } from "../../domain/offers.js";
 import { snapshotHash } from "../canonical.js";
+import {
+  categoryBlocks,
+  checkedCompositionAssets,
+  verifyCategoryBlocks,
+} from "./category-blocks.js";
 export type ServiceMapping = {
   serviceId: string;
   productId: number;
@@ -23,7 +28,9 @@ const mappingsSchema = z.array(
     .strict(),
 );
 // Proposales takes first/last name; the contact's name is split at the first space.
-function recipientInput(r: NonNullable<DraftSnapshot["presentation"]>["recipient"] & {}) {
+function recipientInput(
+  r: NonNullable<DraftSnapshot["presentation"]>["recipient"] & {},
+) {
   const [first, ...rest] = (r.contactName ?? "").split(/\s+/).filter(Boolean);
   return {
     ...(first ? { first_name: first } : {}),
@@ -52,9 +59,13 @@ export function buildPricedPayload(
   const modern = version !== undefined;
   // proposal-3: client-facing title, introduction, VAT wording, recipient; review
   // questions stay in the app.
-  const clientFacing = version === "proposal-3";
+  const clientFacing = version === "proposal-3" || version === "proposal-4";
   const recipient = clientFacing ? snapshot.presentation?.recipient : undefined;
-  const mappings = mappingsSchema.parse(rawMappings);
+  const mappings = mappingsSchema.parse(
+    version === "proposal-4"
+      ? checkedCompositionAssets(snapshot, companyId).services
+      : rawMappings,
+  );
   if (
     new Set(mappings.map((m) => m.serviceId)).size !== mappings.length ||
     new Set(mappings.map((m) => m.variationId)).size !== mappings.length
@@ -64,7 +75,14 @@ export function buildPricedPayload(
     snapshot.report,
     {
       items: snapshot.items.map(
-        ({ serviceId, quantity, disposition, findingIds, rationale, ...rest }) => ({
+        ({
+          serviceId,
+          quantity,
+          disposition,
+          findingIds,
+          rationale,
+          ...rest
+        }) => ({
           serviceId,
           quantity,
           disposition,
@@ -83,8 +101,11 @@ export function buildPricedPayload(
   const {
     compositionVersion: _composition,
     presentation: _presentation,
+    compositionAssets: _assets,
     ...canonicalSnapshot
   } = snapshot;
+  if (version !== "proposal-4" && _assets !== undefined)
+    throw new Error("unexpected_composition_assets");
   if (snapshotHash(rebuilt) !== snapshotHash(canonicalSnapshot))
     throw new Error("snapshot_tampered");
   return {
@@ -111,33 +132,36 @@ export function buildPricedPayload(
       case_catalogue: snapshot.catalogueVersion,
       ...(modern ? { case_composition: version } : {}),
     },
-    blocks: (modern
-      ? presentServices(snapshot.items, snapshot.catalogue)
-      : snapshot.items
-    ).map((i) => {
-      const m = mappings.find((m) => m.serviceId === i.serviceId);
-      if (!m) throw new Error("missing_mapping");
-      return {
-        content_id: m.variationId,
-        type: "product-block" as const,
-        title: i.title + (i.billing === "monthly" ? " — per month" : ""),
-        description: `${i.deliverables.join("\n")}${i.rationale ? `\n\nWhy: ${i.rationale}` : ""}\n\nExcludes: ${i.exclusions.join("; ")}\n\nBilling: ${i.billing === "monthly" ? "EUR " + i.unitPriceMinor / 100 + " per month; recurring monthly service" : "One-time"}; ${clientFacing ? "prices exclude VAT." : "illustrative prices excluding tax."}`,
-        // Proposales fills an empty list with the library item's image (observed
-        // 10 October), so a lead-only image cannot be expressed at creation.
-        image_uuids: [m.imageUuid],
-        currency: snapshot.currency,
-        quantity: i.quantity,
-        quantity_editable: false,
-        optional: i.disposition === "optional",
-        optional_picked: false,
-        recurring: i.billing === "monthly",
-        unit: i.billing === "monthly" ? "month" : "unit",
-        unit_value_without_discount_without_tax: i.unitPriceMinor,
-        unit_value_with_discount_without_tax: i.unitPriceMinor,
-        unit_value_without_discount_with_tax: i.unitPriceMinor,
-        unit_value_with_discount_with_tax: i.unitPriceMinor,
-      };
-    }),
+    blocks:
+      version === "proposal-4"
+        ? categoryBlocks(snapshot, companyId)
+        : (modern
+            ? presentServices(snapshot.items, snapshot.catalogue)
+            : snapshot.items
+          ).map((i) => {
+            const m = mappings.find((m) => m.serviceId === i.serviceId);
+            if (!m) throw new Error("missing_mapping");
+            return {
+              content_id: m.variationId,
+              type: "product-block" as const,
+              title: i.title + (i.billing === "monthly" ? " — per month" : ""),
+              description: `${i.deliverables.join("\n")}${i.rationale ? `\n\nWhy: ${i.rationale}` : ""}\n\nExcludes: ${i.exclusions.join("; ")}\n\nBilling: ${i.billing === "monthly" ? "EUR " + i.unitPriceMinor / 100 + " per month; recurring monthly service" : "One-time"}; ${clientFacing ? "prices exclude VAT." : "illustrative prices excluding tax."}`,
+              // Proposales fills an empty list with the library item's image (observed
+              // 10 October), so a lead-only image cannot be expressed at creation.
+              image_uuids: [m.imageUuid],
+              currency: snapshot.currency,
+              quantity: i.quantity,
+              quantity_editable: false,
+              optional: i.disposition === "optional",
+              optional_picked: false,
+              recurring: i.billing === "monthly",
+              unit: i.billing === "monthly" ? "month" : "unit",
+              unit_value_without_discount_without_tax: i.unitPriceMinor,
+              unit_value_with_discount_without_tax: i.unitPriceMinor,
+              unit_value_without_discount_with_tax: i.unitPriceMinor,
+              unit_value_with_discount_with_tax: i.unitPriceMinor,
+            };
+          }),
   };
 }
 export function verifyPricedProposal(
@@ -172,8 +196,10 @@ export function verifyPricedProposal(
   if (
     wanted
       ? !p.recipient_is_set ||
-        (!!wanted.email && p.recipient_email?.toLowerCase() !== wanted.email.toLowerCase()) ||
-        (p.recipient_company_name != null && p.recipient_company_name !== wanted.company_name)
+        (!!wanted.email &&
+          p.recipient_email?.toLowerCase() !== wanted.email.toLowerCase()) ||
+        (p.recipient_company_name != null &&
+          p.recipient_company_name !== wanted.company_name)
       : p.recipient_is_set
   )
     issues.push("recipient");
@@ -185,6 +211,13 @@ export function verifyPricedProposal(
     issues.push("metadata");
   if (p.tax_options.mode !== "simplified" || p.tax_options.tax_included)
     issues.push("tax_display");
+  if (snapshot.compositionVersion === "proposal-4") {
+    if (p.data.case_composition !== "proposal-4") issues.push("composition");
+    issues.push(
+      ...verifyCategoryBlocks(p.blocks, categoryBlocks(snapshot, companyId)),
+    );
+    return { verified: issues.length === 0, issues: [...new Set(issues)] };
+  }
   if (p.blocks.length !== expected.blocks.length) issues.push("block_count");
   if (
     snapshot.compositionVersion &&
@@ -232,6 +265,8 @@ export function buildOptionalDefaultsPatch(
   companyId: string,
   key: string,
 ) {
+  if (snapshot.compositionVersion === "proposal-4")
+    throw new Error("category_patch_not_supported");
   const fidelity = verifyPricedProposal(
     raw,
     snapshot,

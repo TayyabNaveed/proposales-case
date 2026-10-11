@@ -8,6 +8,11 @@ import {
 import { createDraftService, createDraftStore } from "./drafts.js";
 import { createOperationStore } from "./db.js";
 import { createAssetStore, getServiceMapping } from "./provider-assets.js";
+import {
+  loadCompositionAssets,
+  proposalComposition,
+} from "./category-assets.js";
+import { checkedCompositionAssets } from "./providers/category-blocks.js";
 import { createProposales } from "./providers/proposales.js";
 import {
   buildPricedPayload,
@@ -68,10 +73,27 @@ export function apiHandlers() {
     async recommendation(id, scope) {
       return createRecommendationStore(database()).get(id, scope);
     },
-    async snapshot(requestId, recommendationId, selections, scope, presentation) {
+    async snapshot(
+      requestId,
+      recommendationId,
+      selections,
+      scope,
+      presentation,
+    ) {
       return createDraftService(database(), {
         model: model(),
         resolveReport: researchService().resolveReport,
+        ...(proposalComposition(process.env.PROPOSAL_COMPOSITION) ===
+        "proposal-4"
+          ? {
+              compositionAssets: (snapshot: DraftSnapshot) =>
+                loadCompositionAssets(
+                  createAssetStore(database()),
+                  process.env.PROPOSALES_COMPANY_ID ?? "",
+                  snapshot,
+                ),
+            }
+          : {}),
       }).getOrCreateDraftSnapshot(
         requestId,
         recommendationId,
@@ -94,16 +116,18 @@ export function apiHandlers() {
       const api = createProposales({ apiKey, companyId }),
         assets = createAssetStore(database());
       const mappings = (s: DraftSnapshot) =>
-        Promise.all(
-          s.items.map((i) =>
-            getServiceMapping(
-              assets,
-              companyId,
-              i.serviceId,
-              s.catalogueVersion,
-            ),
-          ),
-        );
+        s.compositionVersion === "proposal-4"
+          ? Promise.resolve(checkedCompositionAssets(s, companyId).services)
+          : Promise.all(
+              s.items.map((i) =>
+                getServiceMapping(
+                  assets,
+                  companyId,
+                  i.serviceId,
+                  s.catalogueVersion,
+                ),
+              ),
+            );
       return createDraftFromSnapshot({
         snapshotId: id,
         accessScope: scope,
@@ -186,7 +210,14 @@ export function introHandlers() {
           model: model(),
           resolveReport: researchService().resolveReport,
         }).draft(body.recommendationId, body.selections, scope, body.refresh);
-        const result = r.state === "ready" ? (r.result as { text: string; dropped: number; promptVersion: string }) : null;
+        const result =
+          r.state === "ready"
+            ? (r.result as {
+                text: string;
+                dropped: number;
+                promptVersion: string;
+              })
+            : null;
         return Response.json(
           {
             intro: {
