@@ -121,6 +121,59 @@ export function splitEvidence<E extends { id: string }>(report: {
     other: report.evidence.filter((e) => !used.has(e.id)),
   };
 }
+// Search results cannot show that a business lacks a website, Google Business
+// Profile or Search Console, or measure rankings and traffic. Only claims that
+// the business has none of these are rejected; "no prices on its website" is
+// about content, not absence, and passes. English phrasing only.
+const asset =
+  "(?:web ?site|google business profile|business profile|search console)";
+const unsupportedPatterns: [string, RegExp][] = [
+  // "has no website", "without a Google Business Profile", "lacks its own website"
+  [
+    "absence_claim",
+    new RegExp(
+      String.raw`\b(?:no|without|lacks?|lacking|missing|absence of|(?:does|do)(?:n['’]t| not) have|(?:has|have)(?:n['’]t| not)(?: got)?)\s+(?:(?:a|an|any|its|their|the|own|official|dedicated|public|active|working|functional|proper|verified|claimed)\s+){0,3}` +
+        asset +
+        // "missing website content" is about content, not the website.
+        String.raw`\b(?!\s+(?:content|pages?|copy|text|information|details|features?|sections?)\b)`,
+      "i",
+    ),
+  ],
+  // "the website is missing", "a Search Console account was not found"
+  [
+    "absence_state",
+    new RegExp(
+      asset +
+        String.raw`(?:\s+\w+)?\s+(?:is|was|are|were|appears|seems)\s+(?:to be\s+)?(?:missing|absent|not (?:found|present|set up))`,
+      "i",
+    ),
+  ],
+  // "could not find a website"
+  [
+    "not_found_claim",
+    new RegExp(
+      String.raw`\b(?:could not|couldn['’]t|cannot|can['’]t|did not|didn['’]t)\s+(?:find|locate|identify)\s+(?:(?:a|an|any|its|their)\s+)?` +
+        asset,
+      "i",
+    ),
+  ],
+  [
+    "unmeasured_metric",
+    /\brank(?:s|ed)? (?:number|#|\d)|page\s?speed|(?:traffic|conversion|ranking|visibility|revenue)[^.!?]{0,80}\d+\s*%|AI visibility (?:score|rank)/i,
+  ],
+];
+// Returns the name of the rule a claim breaks, or null.
+export function unsupportedClaim(text: string) {
+  return (
+    unsupportedPatterns.find(([, pattern]) => pattern.test(text))?.[0] ?? null
+  );
+}
+// Names the broken rule, so a failed run records why without storing model text.
+export class UnsupportedSummary extends Error {
+  constructor(readonly rule: string) {
+    super("research_unsupported_summary");
+  }
+}
 // The report covers only the operator-chosen business's sources. Identity and the
 // website are the operator's facts, recorded by code; the model asserts neither.
 export function buildLiveReport(
@@ -133,15 +186,10 @@ export function buildLiveReport(
   input = researchInputSchema.parse(input);
   const out = researchOutputSchema.parse(raw);
   const known = new Map(evidence.map((e) => [e.id, e]));
-  const forbidden = (claim: string) =>
-    /\b(?:no|without|absent|missing|lacks?|does not have)\b[^.!?]{0,80}\b(?:website|google business profile|search console)\b/i.test(
-      claim,
-    ) ||
-    /(?:no|without|does not have|lacks?|missing) (?:a |an )?(?:website|google business profile|search console)|ranked? (?:number|#|\d)|page\s?speed|(?:traffic|conversion|ranking|visibility|revenue)[^.!?]{0,80}\d+\s*%|AI visibility (?:score|rank)/i.test(
-      claim,
-    );
+  const forbidden = (claim: string) => !!unsupportedClaim(claim);
   // The summary cannot be removed, so an unsupported summary rejects the report.
-  if (forbidden(out.summary)) throw new Error("research_unsupported_summary");
+  const rule = unsupportedClaim(out.summary);
+  if (rule) throw new UnsupportedSummary(rule);
   // One unsupported finding or action is removed and disclosed rather than
   // discarding every supported statement; nothing unsupported is shown.
   const findings = out.findings.filter(

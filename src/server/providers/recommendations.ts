@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { aiFailureCode } from "../provider-errors.js";
-import { repairInstruction } from "../../prompts/service-recommendation/v1.js";
+import {
+  repairInstruction,
+  repairTemplates,
+  type RepairDetail,
+} from "../../prompts/service-recommendation/v2.js";
 import { activePrompts } from "../../prompts/active.js";
 import { promptProvenance } from "../prompt-provenance.js";
 import { createDeepSeek } from "@ai-sdk/deepseek";
@@ -15,6 +19,7 @@ import type { CatalogueV2 } from "../../domain/catalogue.js";
 import {
   selectionSchema,
   validateSelection,
+  SelectionRuleError,
   type SelectionResult,
 } from "../../domain/selection.js";
 import { snapshotHash } from "../canonical.js";
@@ -82,7 +87,7 @@ export function recommendationIdentity(
         activePrompts.selection,
         z.toJSONSchema(selectionSchema),
       ),
-      repairHash: snapshotHash(repairInstruction("{validationCode}")),
+      repairHash: snapshotHash(repairTemplates),
     },
     inputHash: snapshotHash({
       reportHash,
@@ -96,7 +101,7 @@ export function recommendationIdentity(
           activePrompts.selection,
           z.toJSONSchema(selectionSchema),
         ),
-        repairHash: snapshotHash(repairInstruction("{validationCode}")),
+        repairHash: snapshotHash(repairTemplates),
       },
     }),
   };
@@ -185,6 +190,7 @@ export async function recommendServices(
     start = Date.now();
   let attempts = 0,
     repairCode: string | undefined,
+    repairDetail: RepairDetail | undefined,
     requestHash: string | undefined,
     actualModel: string | undefined;
   const usage: Usage = {
@@ -249,7 +255,8 @@ export async function recommendServices(
     let raw: unknown;
     try {
       const system =
-        systemPrompt + (repairCode ? repairInstruction(repairCode) : "");
+        systemPrompt +
+        (repairCode ? repairInstruction(repairCode, repairDetail) : "");
       requestHash = snapshotHash({
         system,
         prompt,
@@ -298,6 +305,8 @@ export async function recommendServices(
       };
     } catch (error) {
       repairCode = safeValidationCode(error);
+      repairDetail =
+        error instanceof SelectionRuleError ? error.detail : undefined;
     }
   }
   // Record which rule rejected the last attempt, so a failure can be diagnosed.

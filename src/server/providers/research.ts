@@ -32,6 +32,7 @@ import {
   type ChosenBusiness,
   type ResearchInput,
   type Evidence,
+  UnsupportedSummary,
 } from "../../domain/research.js";
 export const searchVersion = "tavily-basic-2",
   reportPromptVersion = activePrompts.research.version;
@@ -222,6 +223,7 @@ type StageDiagnostics = Omit<ResearchReportResult, "report"> & {
   failure: "validation_failed" | "provider_failed";
   // Which deterministic check rejected the output; never raw model text.
   check?: string;
+  rule?: string;
 };
 export class ResearchReportFailure extends Error {
   constructor(readonly diagnostics: StageDiagnostics) {
@@ -327,6 +329,8 @@ async function structuredCall<S extends z.ZodType, R>(
       ...diagnostics(),
       failure: generated ? "validation_failed" : "provider_failed",
       ...(check ? { check } : {}),
+      // Which rule, never the rejected text.
+      ...(error instanceof UnsupportedSummary ? { rule: error.rule } : {}),
     });
   }
 }

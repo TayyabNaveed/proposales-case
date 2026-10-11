@@ -1,8 +1,10 @@
 # Prompt foundation
 
-Active families are `business-identity-1` (`src/prompts/business-identity/v1.ts`), `research-report-7` (`research-report/v7.ts`), `service-selector-1` (`service-recommendation/v1.ts`) and `proposal-intro-2` (`proposal-intro/v2.ts`). `active.ts` pins them.
+Active families are `business-identity-1` (`src/prompts/business-identity/v1.ts`), `research-report-8` (`research-report/v8.ts`), `service-selector-2` (`service-recommendation/v2.ts`) and `proposal-intro-2` (`proposal-intro/v2.ts`). `active.ts` pins them.
 
 - `research-report-7` adds how to treat the operator's client notes (an attributed source, never public information).
+- `research-report-8` keeps v7's instructions exactly and changes validation (`research-validation-8`). The summary check rejects only claims that the business lacks a website, Google Business Profile or Search Console, or that quote rankings or traffic; a sentence that merely mentions a website ("no prices are listed on its website") passes. A rejection records the rule it broke (`absence_claim`, `absence_state`, `not_found_claim`, `unmeasured_metric`), never the rejected text. Phrasing is matched in English only.
+- `service-selector-2` keeps v1's instructions exactly. When a selection breaks a prerequisite, the repair names the service and what it needs, for example that google-profile requires a confirmed Google Business Profile, so the second attempt can remove it, add its foundation, or ask about it.
 - `proposal-intro-2` drafts a three-to-four-sentence introduction. Each sentence lists its references (finding IDs, `notes`, `service:<id>`, `agency`). `domain/intro.ts` keeps only sentences whose references exist, at most five, stopping at whole sentences within 1,500 characters. Version 2 changes the validation/cache identity; version 1 remains immutable. It is written as a follow-up when the client's goals are known, and as a first approach otherwise. The operator edits it before creating the proposal.
 
 - `business-identity-1` is the identify stage. It returns up to three candidates with quoted name and location evidence and the sources it believes are each business's own website. `domain/identity.ts` verifies them (`identity-validation-1`).

@@ -122,12 +122,20 @@ test("extracted active prompts preserve exact shipped text and record operationa
   const { definition: researchV2 } =
     await import("../src/prompts/research-report/v2.js");
   const hash = (s: string) => createHash("sha256").update(s).digest("hex");
-  // research-report-2 stays byte-identical for replay; research-report-7 is active.
+  // research-report-2 stays byte-identical for replay; research-report-8 is active
+  // and changes validation only, so its instructions are v7's exactly.
   // Identity is its own stage; the report covers only the operator-chosen business.
   assert.equal(activePrompts.identify.version, "business-identity-1");
   assert.match(activePrompts.identify.system, /name quote copied exactly/i);
   assert.match(activePrompts.identify.system, /other locations are unrelated/i);
-  assert.equal(activePrompts.research.version, "research-report-7");
+  assert.equal(activePrompts.research.version, "research-report-8");
+  const { definition: researchV7 } =
+    await import("../src/prompts/research-report/v7.js");
+  assert.equal(activePrompts.research.system, researchV7.system);
+  assert.notEqual(
+    activePrompts.research.validationVersion,
+    researchV7.validationVersion,
+  );
   assert.match(activePrompts.research.system, /Notes from the operator/);
   assert.doesNotMatch(activePrompts.research.system, /candidates/i);
   assert.equal(

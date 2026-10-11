@@ -5,9 +5,15 @@ import { catalogueV2 } from "../src/domain/catalogue.js";
 import recorded from "../src/domain/recorded-recommendations.json" with { type: "json" };
 import { recommendationIdentity } from "../src/server/providers/recommendations.js";
 import { prepareDraftSnapshot } from "../src/server/drafts.js";
+import { activePrompts } from "../src/prompts/active.js";
 import type { RecommendationRecord } from "../src/server/recommendations.js";
+// The recorded run predates the active selector version; this test is about
+// prices and rationale, so it is stamped with the version in force.
 const report = reports[0],
-  run = recorded.recommendations[0];
+  run = {
+    ...recorded.recommendations[0],
+    promptVersion: activePrompts.selection.version,
+  };
 function recommendation(): RecommendationRecord {
   return {
     id: "00000000-0000-4000-8000-000000000001",

@@ -13,6 +13,13 @@ import { createDraftStore } from "../src/server/drafts.js";
 import { recommendationIdentity } from "../src/server/providers/recommendations.js";
 import { listProposals } from "../src/server/proposals.js";
 import recorded from "../src/domain/recorded-recommendations.json" with { type: "json" };
+import { activePrompts } from "../src/prompts/active.js";
+// Recorded under an earlier selector version; stamped with the active one.
+const currentRun = () =>
+  ({
+    ...recorded.recommendations[0],
+    promptVersion: activePrompts.selection.version,
+  }) as any;
 loadLocalEnv();
 test("the proposals list joins drafts to their Proposales proposal, live status and neutral scope changes", async () => {
   const schema = "case_test_" + randomBytes(8).toString("hex"),
@@ -28,7 +35,7 @@ test("the proposals list joins drafts to their Proposales proposal, live status 
       { identity: recommendationIdentity(report, catalogueV2, scope, "deepseek-flash"), report, catalogue: catalogueV2, accessScope: scope },
       false,
     );
-    const run = recorded.recommendations[0] as any;
+    const run = currentRun();
     await recs.finish(rec.record.id, scope, { result: run });
     // Keep the AI's website and pages, drop one suggestion, add one service.
     const kept = run.selection.items.filter((i: any) => i.serviceId !== "faq-content");

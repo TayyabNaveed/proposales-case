@@ -12,6 +12,13 @@ import { catalogueV2 } from "../src/domain/catalogue.js";
 import { buildDraftSnapshot } from "../src/domain/offers.js";
 import recorded from "../src/domain/recorded-recommendations.json" with { type: "json" };
 import { createDraftFromSnapshot } from "../src/server/workflow.js";
+import { activePrompts } from "../src/prompts/active.js";
+// Recorded under an earlier selector version; stamped with the active one.
+const currentRun = () =>
+  ({
+    ...recorded.recommendations[0],
+    promptVersion: activePrompts.selection.version,
+  }) as any;
 loadLocalEnv();
 test("snapshot admission and provider identity/link survive concurrency, conflicts, quotas and reconnect", async () => {
   const schema = "case_test_" + randomBytes(8).toString("hex"),
@@ -38,7 +45,7 @@ test("snapshot admission and provider identity/link survive concurrency, conflic
       },
       false,
     );
-    const run = recorded.recommendations[0] as any;
+    const run = currentRun();
     await recs.finish(admitted.record.id, scope, { result: run });
     const snapshot = buildDraftSnapshot(report, run.selection, catalogueV2),
       first = createDraftStore(a, schema, 10),
@@ -187,7 +194,7 @@ test("category assets are pinned before save; restored requests do not read muta
       false,
     );
     await recs.finish(admitted.record.id, scope, {
-      result: recorded.recommendations[0] as any,
+      result: currentRun(),
     });
     const picks = categorySnapshot().items.map(
       ({ serviceId, quantity, disposition }) => ({
@@ -286,7 +293,7 @@ test("an absent request is resolved as expired only once no save can still land"
     const recs = createRecommendationStore(db, schema),
       report = reports[0],
       scope = "test",
-      run = recorded.recommendations[0] as any;
+      run = currentRun();
     const admitted = await recs.admit(
       {
         identity: recommendationIdentity(report, catalogueV2, scope, "deepseek-flash"),

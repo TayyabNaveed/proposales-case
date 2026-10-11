@@ -499,3 +499,56 @@ test("client notes become an attributed operator source and the owner's goal", a
   assert.throws(() => operatorChoiceSchema.parse({ ...choiceBase, notes: "x".repeat(1001) }));
 });
 const choiceBase = { candidate: 0, website: { kind: "none" } };
+
+test("the absence check rejects claims that the business lacks an asset, not sentences that mention one", async () => {
+  const { unsupportedClaim } = await import("../src/domain/research.js");
+  // True statements about a business with a confirmed website (Legend Rör AB, 11 October).
+  for (const fine of [
+    "Legend Rör AB is a plumbing firm in Uppsala; no prices are listed on its website.",
+    "Booking is not possible without calling; the website lists a phone number only.",
+    "Reviews mention fast service, with no complaints visible on the website or Trustpilot.",
+    "The website is not available in English.",
+    "Customers note missing website content such as opening hours.",
+    "The company has a website with contact details and service descriptions.",
+  ])
+    assert.equal(unsupportedClaim(fine), null, fine);
+  for (const [claim, rule] of [
+    ["The business has no website.", "absence_claim"],
+    ["It does not have a Google Business Profile.", "absence_claim"],
+    ["The firm operates without its own website.", "absence_claim"],
+    ["They lack a verified business profile.", "absence_claim"],
+    ["The website appears to be missing.", "absence_state"],
+    ["A Search Console account was not found.", "absence_state"],
+    ["We could not find a website for the company.", "not_found_claim"],
+    ["It ranks number 1 on Google.", "unmeasured_metric"],
+    ["Website traffic grew by 40%.", "unmeasured_metric"],
+  ])
+    assert.equal(unsupportedClaim(claim), rule, claim);
+});
+
+test("an unsupported summary names the broken rule, never the rejected text", async () => {
+  const { buildLiveReport, UnsupportedSummary } =
+    await import("../src/domain/research.js");
+  assert.throws(
+    () =>
+      buildLiveReport(
+        input,
+        evidence,
+        { ...output, summary: "Juniper has no Google Business Profile." },
+        "live-123",
+        chosen,
+      ),
+    (e) =>
+      e instanceof UnsupportedSummary &&
+      e.message === "research_unsupported_summary" &&
+      e.rule === "absence_claim",
+  );
+  const r = buildLiveReport(
+    input,
+    evidence,
+    { ...output, summary: "Juniper is a ceramics studio; no prices are shown on its website." },
+    "live-123",
+    chosen,
+  );
+  assert.match(r.summary, /no prices are shown/);
+});

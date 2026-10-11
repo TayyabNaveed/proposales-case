@@ -225,3 +225,52 @@ test("oversized inputs fail before paid dispatch and cancellation does not repai
   );
   assert.equal(calls, 0);
 });
+
+test("a failed prerequisite is named in the repair, so the retry can correct it", async () => {
+  const systems: string[] = [];
+  const run = await recommendServices(reports[0], catalogueV2, {
+    ...options,
+    fetch: async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      systems.push(
+        body.messages
+          .filter((m: { role: string }) => m.role === "system")
+          .map((m: { content: string }) => m.content)
+          .join("\n"),
+      );
+      // First answer: Google profile work although no profile is confirmed.
+      return response(
+        systems.length === 1
+          ? { ...valid, items: [item, { ...item, serviceId: "google-profile" }] }
+          : valid,
+      );
+    },
+  });
+  assert.equal(systems.length, 2);
+  assert.doesNotMatch(systems[0], /Previous output failed/);
+  assert.match(
+    systems[1],
+    /failed missing_prerequisite\. google-profile requires a confirmed Google Business Profile, which this report does not confirm\. Remove google-profile\. If it matters, ask about it in questions instead\./,
+  );
+  assert.equal(run.attempts, 2);
+  assert.equal(run.promptVersion, "service-selector-2");
+  assert.deepEqual(
+    run.selection.items.map((i) => i.serviceId),
+    ["website-base"],
+  );
+});
+
+test("a service with a buildable foundation is told it can add that foundation", async () => {
+  const { repairInstruction } = await import(
+    "../src/prompts/service-recommendation/v2.js"
+  );
+  assert.match(
+    repairInstruction("missing_prerequisite", {
+      serviceId: "ads-management",
+      requires: "campaign",
+      foundation: "ads-setup",
+    }),
+    /ads-management requires an existing ad campaign, .*Remove ads-management, or also select ads-setup as a core item if the evidence supports it\./,
+  );
+  assert.doesNotMatch(repairInstruction("unsupported_service"), /requires/);
+});

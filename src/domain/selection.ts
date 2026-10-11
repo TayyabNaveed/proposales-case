@@ -53,6 +53,20 @@ export function validateScope(
 ): ScopeResult {
   return checkScope(rawReport, scopeSchema.parse(raw), catalogue);
 }
+// A rejected selection, with which item broke which rule, so a corrected
+// attempt can be told exactly what to change. The message stays the code.
+export class SelectionRuleError extends Error {
+  constructor(
+    code: string,
+    readonly detail: {
+      serviceId: string;
+      requires: "website" | "profile" | "campaign";
+      foundation: string | null;
+    },
+  ) {
+    super(code);
+  }
+}
 function checkScope(rawReport: ReportV2, s: ScopeResult, catalogue: CatalogueV2) {
   const report = reportSchema.parse(rawReport);
   const seen = new Set<string>();
@@ -102,7 +116,11 @@ function checkScope(rawReport: ReportV2, s: ScopeResult, catalogue: CatalogueV2)
         (i.disposition === "optional" || x.disposition === "core"),
     );
     if (cap.status !== "present" && !dependency)
-      throw new Error("missing_prerequisite");
+      throw new SelectionRuleError("missing_prerequisite", {
+        serviceId: i.serviceId,
+        requires: svc.requires,
+        foundation,
+      });
   }
   return {
     ...s,
