@@ -19,6 +19,8 @@ import { createApiHandlers } from "./api.js";
 import { consumeActionAttempt } from "./access-store.js";
 import { createResearchStore, createResearchService } from "./research.js";
 import { createResearchApi } from "./research-api.js";
+import { readUsage } from "./usage.js";
+import { account, safeError } from "./http.js";
 async function consume(scope: string, action: string) {
   const secret = process.env.SESSION_SECRET;
   if (!secret) throw new Error("access_unconfigured");
@@ -143,4 +145,20 @@ export function apiHandlers() {
       });
     },
   });
+}
+export function usageHandlers() {
+  return {
+    async GET(req: Request) {
+      try {
+        const scope = account(req, false);
+        if (!(await consume(scope, "usage-read")))
+          throw new Error("too_many_attempts");
+        return Response.json(await readUsage(database(), scope), {
+          headers: { "Cache-Control": "no-store" },
+        });
+      } catch (e) {
+        return safeError(e);
+      }
+    },
+  };
 }

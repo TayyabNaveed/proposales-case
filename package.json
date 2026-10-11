@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "probe": "node --import tsx scripts/probe-providers.ts",
     "db:migrate": "node --import tsx scripts/migrate.ts",
-    "test:db": "node --import tsx --test tests/db.integration.ts tests/offers.integration.ts tests/access.integration.ts tests/provider-assets.integration.ts tests/recommendations.integration.ts tests/drafts.integration.ts tests/research.integration.ts",
+    "test:db": "node --import tsx --test tests/db.integration.ts tests/offers.integration.ts tests/access.integration.ts tests/provider-assets.integration.ts tests/recommendations.integration.ts tests/drafts.integration.ts tests/research.integration.ts tests/usage.integration.ts",
     "dev": "next dev --webpack --hostname 127.0.0.1",
     "build": "next build --webpack",
     "start": "next start --hostname 127.0.0.1",

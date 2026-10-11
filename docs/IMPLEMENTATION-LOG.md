@@ -199,3 +199,8 @@ Final HTTP integration passed (1/1): unauthorised/cross-origin writes rejected, 
 - The AI output schema (`selectionSchema`) is unchanged, so the model can never emit an operator item. The proposal scope (`scopeSchema`) also accepts `addedBy: "operator"` items with no findings or reason. The server attributes anything outside the stored recommendation to the operator. Catalogue bounds, overlaps and prerequisites apply to every item. Quantities may change within catalogue bounds; this replaces the earlier rule that capped them at the AI's quantity.
 - No new log table: snapshot plus recommendation give additions, removals and quantity changes exactly. Operator blocks have no "Why" line. AI blocks are byte-identical to before, so existing drafts still verify.
 - UI explains unavailable services from the same rules (`serviceAvailability`). 145 offline tests, build and DB 9/9 pass.
+
+## 11 October 2026 — Phase 2.2: usage line
+
+- Decision (Tayyab): show usage rather than block it. `GET /api/usage` (authenticated, rate-limited) totals the stored runs for the access scope: searches, Tavily credits, AI runs and tokens, for today and this month (UTC). Failed runs count; cache hits create no run and cost nothing. Calls made outside the app (evaluation scripts) are not included.
+- Real check: logged out returns 401. Logged in, this month showed 9 searches, 27 credits, 30 AI runs and about 101k tokens. Usage integration test plus DB 10/10; 145 offline tests; build.

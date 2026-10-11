@@ -4,6 +4,7 @@ import { reports, reportSchema, type ReportV2 } from "../domain/reports";
 import { findSavedGeneration, canAdoptReport } from "../domain/workbench";
 import { apiRequest } from "./workbench/api";
 import { ResearchPanel } from "./ResearchPanel";
+import { UsageLine } from "./workbench/UsageLine";
 import { useDemoSession } from "./workbench/useDemoSession";
 import {
   useProposalWorkflow,
@@ -46,7 +47,9 @@ export function ExampleWorkbench() {
     examples = useProposalWorkflow(reports[0], session);
   const [tab, setTab] = useState<"research" | "examples">("research"),
     [code, setCode] = useState(""),
-    [researchBusy, setResearchBusy] = useState(false);
+    [researchBusy, setResearchBusy] = useState(false),
+    // Bumped when research or suggestions finish, so the usage line reloads.
+    [usageRefresh, setUsageRefresh] = useState(0);
   const [saved, setSaved] =
       useState<ReturnType<typeof findSavedGeneration>>(null),
     [recoveryMessage, setRecoveryMessage] = useState(""),
@@ -173,10 +176,13 @@ export function ExampleWorkbench() {
         {session.checking ? (
           <p>Checking demo access…</p>
         ) : session.authenticated ? (
-          <p>
-            <span className="access-dot" /> Demo access active{" "}
-            <small>Review the proposal in Proposales before sending.</small>
-          </p>
+          <>
+            <p>
+              <span className="access-dot" /> Demo access active{" "}
+              <small>Review the proposal in Proposales before sending.</small>
+            </p>
+            <UsageLine refresh={usageRefresh} />
+          </>
         ) : (
           <form
             onSubmit={(e) => {
@@ -235,7 +241,10 @@ export function ExampleWorkbench() {
             live.recommend(r, live.recommendation.state === "failed")
           }
           onExplore={() => setTab("examples")}
-          onBusy={setResearchBusy}
+          onBusy={(b) => {
+            setResearchBusy(b);
+            if (!b) setUsageRefresh((n) => n + 1);
+          }}
         />
         <Journey
           flow={live}
