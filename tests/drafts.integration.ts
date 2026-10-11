@@ -207,11 +207,19 @@ test("category assets are pinned before save; restored requests do not read muta
       picks,
       scope,
     );
-    assert.equal(saved.snapshot.compositionVersion, "proposal-4");
+    assert.equal(saved.snapshot.compositionVersion, "proposal-5");
     assert.deepEqual(
       saved.snapshot.compositionAssets,
       categorySnapshot().compositionAssets,
     );
+    // The proposal-4 opt-out pins the same assets under its own version.
+    const optOut = await createDraftService(db, {
+      schema,
+      model,
+      categoryComposition: "proposal-4",
+      compositionAssets: async () => categorySnapshot().compositionAssets!,
+    }).getOrCreateDraftSnapshot(randomUUID(), admitted.record.id, picks, scope);
+    assert.equal(optOut.snapshot.compositionVersion, "proposal-4");
     assert.equal(resolutions, 1);
     const failing = createDraftService(db, {
       schema,

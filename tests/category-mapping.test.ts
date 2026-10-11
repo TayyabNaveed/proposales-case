@@ -1,8 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { categorySnapshot } from "./category-fixtures.js";
+import { categorySnapshot, clientSnapshot } from "./category-fixtures.js";
 import {
   buildPricedPayload,
+  investmentSummary,
   verifyPricedProposal,
 } from "../src/server/providers/proposales-mapping.js";
 import { snapshotHash } from "../src/server/canonical.js";
@@ -166,4 +167,87 @@ test("legacy payload bytes remain identical across all historical composition ve
     };
     assert.equal(snapshotHash(buildPricedPayload(v, m, "1", "test")), hash);
   }
+});
+test("proposal-5 states one-time and monthly investment once, merges monthly services and drops billing filler", () => {
+  const s = clientSnapshot();
+  const p = buildPricedPayload(s, [], "1", "test");
+  // Proposales sums one-time and monthly into one total, so the intro says both.
+  assert.equal(
+    p.description_md,
+    "A clear online home.\n\nExample proposal for a fictional business. Investment: €1,800 one-time, then €560 per month. Optional extras are listed separately and not included.",
+  );
+  assert.deepEqual(
+    p.blocks.map((b: any) => [b.title, b.recurring, b.optional, b.unit]),
+    [
+      ["Website & customer experience", false, false, "no-unit"],
+      ["Ongoing monthly services", true, false, "month"],
+      ["AI visibility foundations", false, true, "no-unit"],
+    ],
+  );
+  const monthly = p.blocks[1] as any;
+  const care = s.compositionAssets!.categories.find(
+    (c) => c.categoryId === "ongoing-care",
+  )!;
+  assert.equal(monthly.content_id, care.variationId);
+  assert.deepEqual(monthly.image_uuids, [care.imageUuid]);
+  assert.deepEqual(
+    monthly.multi_product_data.map((r: any) => [r.label, r.unit]),
+    [
+      ["Social media management", "month"],
+      ["Website maintenance", "month"],
+      ["SEO maintenance", "month"],
+    ],
+  );
+  assert.equal(monthly.unit_value_without_discount_without_tax, 56000);
+  // The client reads the scope; no exclusions, VAT, billing, Markdown or operator reasoning.
+  const text = JSON.stringify(p.blocks) + p.description_md;
+  for (const filler of [
+    "Excludes",
+    "**",
+    "VAT",
+    "Billing:",
+    "Why:",
+    "Included services",
+    "Operator-facing",
+  ])
+    assert.equal(text.includes(filler), false, filler);
+  assert.equal(
+    (p.blocks[0] as any).multi_product_data[0].notes,
+    s.items
+      .find((i) => i.serviceId === "website-base")!
+      .deliverables.join("\n"),
+  );
+  const a = {
+    ...p,
+    uuid: "00000000-0000-4000-8000-000000000099",
+    status: "draft",
+    recipient_is_set: false,
+    currency: "EUR",
+  };
+  assert.equal(verifyPricedProposal(a, s, [], "1", "test").verified, true);
+  // A proposal-4 snapshot of the same scope keeps its original layout.
+  const older = buildPricedPayload(
+    { ...s, compositionVersion: "proposal-4" },
+    [],
+    "1",
+    "test",
+  );
+  assert.equal(older.blocks.length, 5);
+  assert.match(older.description_md, /Prices exclude VAT\./);
+});
+test("proposal-5 investment line covers one-time only, monthly only and optional only", () => {
+  const line = (once: number, monthly: number, optional = 0) =>
+    investmentSummary({
+      currency: "EUR",
+      coreOneTimeMinor: once,
+      coreMonthlyMinor: monthly,
+      optionalOneTimeMinor: optional,
+      optionalMonthlyMinor: 0,
+    });
+  assert.equal(line(150050, 0), "Investment: €1,500.50 one-time.");
+  assert.equal(line(0, 8000), "Investment: €80 per month.");
+  assert.equal(
+    line(0, 0, 30000),
+    "Optional extras are listed separately and not included.",
+  );
 });

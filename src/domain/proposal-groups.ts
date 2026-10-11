@@ -106,12 +106,23 @@ export type ProposalGroup = {
   disposition: "core" | "optional";
   items: DraftSnapshot["items"];
 };
+// proposal-5 gathers every core monthly service into one section (shown with the
+// ongoing-care artwork), so a category never appears twice; recurrence is set
+// per block in Proposales.
+export const monthlyGroupTitle = "Ongoing monthly services";
 export function groupProposalItems(
   snapshot: Pick<DraftSnapshot, "items" | "catalogue">,
+  options: { monthlyTogether?: boolean } = {},
 ): ProposalGroup[] {
   const groups = new Map<string, ProposalGroup>();
   for (const item of presentServices(snapshot.items, snapshot.catalogue)) {
-    const category = categoryForService(item.serviceId);
+    const together =
+      options.monthlyTogether &&
+      item.disposition === "core" &&
+      item.billing === "monthly";
+    const category = together
+      ? { id: "ongoing-care" as const, title: monthlyGroupTitle }
+      : categoryForService(item.serviceId);
     const key =
       item.disposition === "optional"
         ? `optional:${item.serviceId}`

@@ -171,6 +171,8 @@ export function createDraftService(
     resolveReport?: (id: string, scope: string) => Promise<ReportV2>;
     catalogue?: CatalogueV2;
     compositionAssets?: (snapshot: DraftSnapshot) => Promise<CompositionAssets>;
+    // Which category composition pinned assets are for; proposal-5 by default.
+    categoryComposition?: "proposal-4" | "proposal-5";
   },
 ) {
   const store = createDraftStore(pool, options.schema),
@@ -241,7 +243,7 @@ export function createDraftService(
         );
         snapshot = {
           ...snapshot,
-          compositionVersion: "proposal-4",
+          compositionVersion: options.categoryComposition ?? "proposal-5",
           compositionAssets: assets,
         };
         checkedCompositionAssets(snapshot, assets.companyId);

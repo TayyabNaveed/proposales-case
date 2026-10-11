@@ -124,7 +124,7 @@ export const proposalPresentationSchema = z
   .strict();
 export type ProposalPresentation = z.infer<typeof proposalPresentationSchema>;
 export type DraftSnapshot = ReturnType<typeof buildDraftSnapshot> & {
-  compositionVersion?: "proposal-2" | "proposal-3" | "proposal-4";
+  compositionVersion?: "proposal-2" | "proposal-3" | "proposal-4" | "proposal-5";
   presentation?: ProposalPresentation;
   compositionAssets?: import("./proposal-groups.js").CompositionAssets;
 };

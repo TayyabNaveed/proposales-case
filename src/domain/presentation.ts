@@ -5,6 +5,7 @@ export const supportedCompositions = [
   "proposal-2",
   "proposal-3",
   "proposal-4",
+  "proposal-5",
 ] as const;
 export type CompositionVersion = (typeof supportedCompositions)[number];
 // Presentation only. Canonical selection order remains unchanged for identity.

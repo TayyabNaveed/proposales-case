@@ -39,6 +39,40 @@ function recipientInput(
     company_name: r.companyName,
   };
 }
+// proposal-5: Proposales adds one-time and monthly prices into a single total
+// (observed 11 October, PDF and web view), so the introduction states both.
+// Plain text: Proposales shows the description's Markdown literally. VAT is
+// left to Proposales' own total line.
+export function investmentSummary(
+  snapshot: Pick<
+    DraftSnapshot,
+    | "currency"
+    | "coreOneTimeMinor"
+    | "coreMonthlyMinor"
+    | "optionalOneTimeMinor"
+    | "optionalMonthlyMinor"
+  >,
+) {
+  const amount = (minor: number) =>
+    new Intl.NumberFormat("en", {
+      style: "currency",
+      currency: snapshot.currency,
+      maximumFractionDigits: minor % 100 ? 2 : 0,
+    }).format(minor / 100);
+  const once = snapshot.coreOneTimeMinor,
+    monthly = snapshot.coreMonthlyMinor;
+  const parts = [
+    once ? `${amount(once)} one-time` : "",
+    monthly ? `${once ? "then " : ""}${amount(monthly)} per month` : "",
+  ].filter(Boolean);
+  const optional =
+    snapshot.optionalOneTimeMinor || snapshot.optionalMonthlyMinor
+      ? " Optional extras are listed separately and not included."
+      : "";
+  return parts.length
+    ? `Investment: ${parts.join(", ")}.${optional}`
+    : optional.trim();
+}
 export function buildPricedPayload(
   snapshot: DraftSnapshot,
   rawMappings: ServiceMapping[],
@@ -59,7 +93,11 @@ export function buildPricedPayload(
   const modern = version !== undefined;
   // proposal-3: client-facing title, introduction, VAT wording, recipient; review
   // questions stay in the app.
-  const clientFacing = version === "proposal-3" || version === "proposal-4";
+  const clientFacing =
+    version === "proposal-3" ||
+    version === "proposal-4" ||
+    version === "proposal-5";
+  const categories = version === "proposal-4" || version === "proposal-5";
   // Proposales requires an email for a recipient (INVALID_CONTACT_EMAIL, observed
   // 11 October); without one the draft is created without a recipient.
   const recipient =
@@ -67,7 +105,7 @@ export function buildPricedPayload(
       ? snapshot.presentation.recipient
       : undefined;
   const mappings = mappingsSchema.parse(
-    version === "proposal-4"
+    categories
       ? checkedCompositionAssets(snapshot, companyId).services
       : rawMappings,
   );
@@ -109,7 +147,7 @@ export function buildPricedPayload(
     compositionAssets: _assets,
     ...canonicalSnapshot
   } = snapshot;
-  if (version !== "proposal-4" && _assets !== undefined)
+  if (!categories && _assets !== undefined)
     throw new Error("unexpected_composition_assets");
   if (snapshotHash(rebuilt) !== snapshotHash(canonicalSnapshot))
     throw new Error("snapshot_tampered");
@@ -119,16 +157,26 @@ export function buildPricedPayload(
     title_md: clientFacing
       ? `${snapshot.report.businessName} — growth plan from ${agencyProfile.name}`
       : `Case demo — ${snapshot.report.businessName} (do not send)`,
-    description_md: clientFacing
-      ? [
-          snapshot.presentation?.intro,
-          (snapshot.report.mode === "synthetic"
-            ? "Example proposal for a fictional business. "
-            : "") + "Prices exclude VAT.",
-        ]
-          .filter(Boolean)
-          .join("\n\n")
-      : `# Metascalers growth plan\n${modern && snapshot.report.mode === "live" ? "Technical-case proposal based on public-source research" : "Synthetic technical-case proposal"}. No recipient or email sending.\n\nCore one-time: EUR ${snapshot.coreOneTimeMinor / 100}. Core monthly: EUR ${snapshot.coreMonthlyMinor / 100}/month. Optional one-time: EUR ${snapshot.optionalOneTimeMinor / 100}. Optional monthly: EUR ${snapshot.optionalMonthlyMinor / 100}/month.\n\nIllustrative prices excluding tax. Review suitability, access, budget, scope and billing before sending.\n${snapshot.questions.join("\n")}`,
+    description_md:
+      version === "proposal-5"
+        ? [
+            snapshot.presentation?.intro,
+            (snapshot.report.mode === "synthetic"
+              ? "Example proposal for a fictional business. "
+              : "") + investmentSummary(snapshot),
+          ]
+            .filter(Boolean)
+            .join("\n\n")
+        : clientFacing
+          ? [
+              snapshot.presentation?.intro,
+              (snapshot.report.mode === "synthetic"
+                ? "Example proposal for a fictional business. "
+                : "") + "Prices exclude VAT.",
+            ]
+              .filter(Boolean)
+              .join("\n\n")
+          : `# Metascalers growth plan\n${modern && snapshot.report.mode === "live" ? "Technical-case proposal based on public-source research" : "Synthetic technical-case proposal"}. No recipient or email sending.\n\nCore one-time: EUR ${snapshot.coreOneTimeMinor / 100}. Core monthly: EUR ${snapshot.coreMonthlyMinor / 100}/month. Optional one-time: EUR ${snapshot.optionalOneTimeMinor / 100}. Optional monthly: EUR ${snapshot.optionalMonthlyMinor / 100}/month.\n\nIllustrative prices excluding tax. Review suitability, access, budget, scope and billing before sending.\n${snapshot.questions.join("\n")}`,
     ...(recipient ? { recipient: recipientInput(recipient) } : {}),
     tax_options: { mode: "simplified" as const, tax_included: false },
     data: {
@@ -138,8 +186,8 @@ export function buildPricedPayload(
       ...(modern ? { case_composition: version } : {}),
     },
     blocks:
-      version === "proposal-4"
-        ? categoryBlocks(snapshot, companyId)
+      version === "proposal-4" || version === "proposal-5"
+        ? categoryBlocks(snapshot, companyId, version)
         : (modern
             ? presentServices(snapshot.items, snapshot.catalogue)
             : snapshot.items

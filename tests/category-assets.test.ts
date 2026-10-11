@@ -52,9 +52,10 @@ test("manifest has exactly five category imports with stable versioned identitie
   assert.ok(m.every((i) => /^[a-f0-9]{64}$/.test(i.imageSha256)));
   assert.throws(() => categoryManifest("https://unrelated.example"));
   assert.throws(() => categoryManifest("http://127.0.0.1:3001"));
-  // Categories are the default; proposal-3 is an explicit opt-out.
-  assert.equal(proposalComposition(undefined), "proposal-4");
-  assert.equal(proposalComposition(""), "proposal-4");
+  // proposal-5 is the default; proposal-4 and proposal-3 are explicit opt-outs.
+  assert.equal(proposalComposition(undefined), "proposal-5");
+  assert.equal(proposalComposition(""), "proposal-5");
+  assert.equal(proposalComposition("proposal-5"), "proposal-5");
   assert.equal(proposalComposition("proposal-3"), "proposal-3");
   assert.equal(proposalComposition("proposal-4"), "proposal-4");
   assert.throws(() => proposalComposition("random"));

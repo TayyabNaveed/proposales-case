@@ -3,5 +3,5 @@
 export const agencyProfile = {
   name: "Metascalers",
   about:
-    "Metascalers helps local businesses get found and chosen online: on their own website, in Google and in AI assistants.",
+    "Metascalers helps businesses get found and chosen online: on their own website, in Google and in AI assistants.",
 } as const;

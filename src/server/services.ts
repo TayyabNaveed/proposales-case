@@ -80,12 +80,13 @@ export function apiHandlers() {
       scope,
       presentation,
     ) {
+      const composition = proposalComposition(process.env.PROPOSAL_COMPOSITION);
       return createDraftService(database(), {
         model: model(),
         resolveReport: researchService().resolveReport,
-        ...(proposalComposition(process.env.PROPOSAL_COMPOSITION) ===
-        "proposal-4"
+        ...(composition !== "proposal-3"
           ? {
+              categoryComposition: composition,
               compositionAssets: (snapshot: DraftSnapshot) =>
                 loadCompositionAssets(
                   createAssetStore(database()),
@@ -116,7 +117,8 @@ export function apiHandlers() {
       const api = createProposales({ apiKey, companyId }),
         assets = createAssetStore(database());
       const mappings = (s: DraftSnapshot) =>
-        s.compositionVersion === "proposal-4"
+        s.compositionVersion === "proposal-4" ||
+        s.compositionVersion === "proposal-5"
           ? Promise.resolve(checkedCompositionAssets(s, companyId).services)
           : Promise.all(
               s.items.map((i) =>

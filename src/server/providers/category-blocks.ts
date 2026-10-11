@@ -2,6 +2,7 @@ import type { DraftSnapshot } from "../../domain/offers.js";
 import {
   compositionAssetsSchema,
   groupProposalItems,
+  type CategoryId,
 } from "../../domain/proposal-groups.js";
 import { snapshotHash } from "../canonical.js";
 
@@ -26,58 +27,88 @@ function rowUuid(snapshot: DraftSnapshot, key: string, serviceId: string) {
 function scopeText(item: DraftSnapshot["items"][number]) {
   return `${item.deliverables.join("\n")}${item.rationale ? `\n\nWhy: ${item.rationale}` : ""}\n\nExcludes: ${item.exclusions.join("; ")}`;
 }
-export function categoryBlocks(snapshot: DraftSnapshot, companyId: string) {
+// proposal-5: what the client reads is the scope. Exclusions and the
+// operator's reasoning stay in the app; billing and VAT are carried by the
+// title, the intro's investment line and Proposales' total.
+function clientScope(item: DraftSnapshot["items"][number]) {
+  return item.deliverables.join("\n");
+}
+const categoryLine: Record<CategoryId, string> = {
+  "website-experience":
+    "Make it easy for customers to understand what you offer and get in touch.",
+  "search-discoverability":
+    "Help people find you on Google and in AI assistants.",
+  "paid-advertising":
+    "Reach people who are already searching for what you offer.",
+  "social-media": "Stay visible to your audience with regular posts.",
+  "ongoing-care": "Ongoing work, billed each month.",
+};
+export function categoryBlocks(
+  snapshot: DraftSnapshot,
+  companyId: string,
+  version: "proposal-4" | "proposal-5" = "proposal-4",
+) {
   const assets = checkedCompositionAssets(snapshot, companyId);
-  return groupProposalItems(snapshot).map((group) => {
-    const category = assets.categories.find(
-      (c) => c.categoryId === group.categoryId,
-    )!;
-    const optional = group.disposition === "optional";
-    const first = group.items[0];
-    const content = optional
-      ? assets.services.find((s) => s.serviceId === first.serviceId)!
-      : category;
-    const amount = optional
-      ? first.unitPriceMinor
-      : group.items.reduce((n, i) => n + i.unitPriceMinor * i.quantity, 0);
-    const monthly = group.billing === "monthly";
-    return {
-      content_id: content.variationId,
-      type: "product-block" as const,
-      title:
-        (optional ? first.title : group.title) +
-        (monthly ? " — per month" : ""),
-      description: `${optional ? scopeText(first) : "Included services are detailed below."}\n\nBilling: ${monthly ? "Recurring monthly services" : "One-time"}; prices exclude VAT.`,
-      image_uuids: [category.imageUuid],
-      currency: snapshot.currency,
-      quantity: optional ? first.quantity : 1,
-      quantity_editable: false,
-      optional,
-      optional_picked: false,
-      recurring: monthly,
-      unit: monthly ? "month" : "unit",
-      unit_value_without_discount_without_tax: amount,
-      unit_value_with_discount_without_tax: amount,
-      unit_value_without_discount_with_tax: amount,
-      unit_value_with_discount_with_tax: amount,
-      multi_product_enabled: !optional,
-      ...(!optional
-        ? {
-            multi_product_data: group.items.map((item) => ({
-              uuid: rowUuid(snapshot, group.key, item.serviceId),
-              label: item.title,
-              notes: scopeText(item),
-              quantity: item.quantity,
-              unit: monthly ? "month" : "unit",
-              unitValueWithDiscountWithoutTax: item.unitPriceMinor,
-              unitValueWithDiscountWithTax: item.unitPriceMinor,
-              unitValueWithoutDiscountWithoutTax: item.unitPriceMinor,
-              unitValueWithoutDiscountWithTax: item.unitPriceMinor,
-            })),
-          }
-        : {}),
-    };
-  });
+  const client = version === "proposal-5";
+  return groupProposalItems(snapshot, { monthlyTogether: client }).map(
+    (group) => {
+      const category = assets.categories.find(
+        (c) => c.categoryId === group.categoryId,
+      )!;
+      const optional = group.disposition === "optional";
+      const first = group.items[0];
+      const content = optional
+        ? assets.services.find((s) => s.serviceId === first.serviceId)!
+        : category;
+      const amount = optional
+        ? first.unitPriceMinor
+        : group.items.reduce((n, i) => n + i.unitPriceMinor * i.quantity, 0);
+      const monthly = group.billing === "monthly";
+      // One-time work shows "1 × €400" rather than "per unit": Proposales offers
+      // only fixed units, none of which names a service.
+      const unit = monthly ? "month" : client ? "no-unit" : "unit";
+      return {
+        content_id: content.variationId,
+        type: "product-block" as const,
+        title:
+          (optional ? first.title : group.title) +
+          (monthly && (optional || !client) ? " — per month" : ""),
+        description: client
+          ? optional
+            ? clientScope(first)
+            : categoryLine[group.categoryId]
+          : `${optional ? scopeText(first) : "Included services are detailed below."}\n\nBilling: ${monthly ? "Recurring monthly services" : "One-time"}; prices exclude VAT.`,
+        image_uuids: [category.imageUuid],
+        currency: snapshot.currency,
+        quantity: optional ? first.quantity : 1,
+        quantity_editable: false,
+        optional,
+        optional_picked: false,
+        recurring: monthly,
+        unit,
+        unit_value_without_discount_without_tax: amount,
+        unit_value_with_discount_without_tax: amount,
+        unit_value_without_discount_with_tax: amount,
+        unit_value_with_discount_with_tax: amount,
+        multi_product_enabled: !optional,
+        ...(!optional
+          ? {
+              multi_product_data: group.items.map((item) => ({
+                uuid: rowUuid(snapshot, group.key, item.serviceId),
+                label: item.title,
+                notes: client ? clientScope(item) : scopeText(item),
+                quantity: item.quantity,
+                unit,
+                unitValueWithDiscountWithoutTax: item.unitPriceMinor,
+                unitValueWithDiscountWithTax: item.unitPriceMinor,
+                unitValueWithoutDiscountWithoutTax: item.unitPriceMinor,
+                unitValueWithoutDiscountWithTax: item.unitPriceMinor,
+              })),
+            }
+          : {}),
+      };
+    },
+  );
 }
 export function verifyCategoryBlocks(
   actual: Record<string, unknown>[],

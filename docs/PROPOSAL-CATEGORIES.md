@@ -1,6 +1,8 @@
 # Category proposal composition
 
-New proposals use the category composition (`proposal-4`) by default; `PROPOSAL_COMPOSITION=proposal-3` opts out (decision, 11 October). Category entries must be imported before proposals can be created with it. Local tests verify the contract; rollout still requires hosted images, imported category mappings and a live read-back/visual check. Background images and video are deferred.
+New proposals use the client-facing category composition (`proposal-5`) by default; `PROPOSAL_COMPOSITION=proposal-4` or `proposal-3` opts out (decisions, 11 October). Existing proposals keep their own composition byte for byte.
+
+`proposal-5` differs from `proposal-4` only in presentation. The introduction ends with one investment line ("€1,700 one-time, then €730 per month"), because Proposales adds one-time and monthly prices into a single total (observed in the PDF and web view). All core monthly services share one "Ongoing monthly services" section with the ongoing-care artwork, so no category appears twice. Section descriptions are one line about the category; rows carry the scope only. Exclusions, billing and VAT lines (Proposales' total states VAT) and "Why:" (the operator's reasoning) stay out of the client's copy. The introduction is plain text: Proposales shows its Markdown literally. One-time work uses Proposales' `no-unit` ("1 × €400"); its units are a fixed list, so service-specific names are not possible. The section price sits above its rows in Proposales' layout; the API has no setting for it. Category entries must be imported before proposals can be created with it. Local tests verify the contract; rollout still requires hosted images, imported category mappings and a live read-back/visual check. Background images and video are deferred.
 
 ## Service definitions and presentation containers
 
