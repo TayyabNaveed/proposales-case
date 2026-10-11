@@ -1,7 +1,15 @@
 import type { ReportV2 } from "../../domain/reports";
 import { friendlyDate } from "./api";
 import { splitEvidence } from "../../domain/research";
-export function ReportView({ report }: { report: ReportV2 }) {
+// Open questions show here until suggestions exist; then the selection's
+// questions, written with this report in view, replace them in one checklist.
+export function ReportView({
+  report,
+  showQuestions,
+}: {
+  report: ReportV2;
+  showQuestions: boolean;
+}) {
   // Synthetic examples keep every owner excerpt together; live reports lead
   // with the sources their findings cite.
   const { cited, other } =
@@ -9,6 +17,9 @@ export function ReportView({ report }: { report: ReportV2 }) {
       ? { cited: report.evidence, other: [] }
       : splitEvidence(report);
   const identity = report.identity;
+  // A short list reads in full; a long one keeps the first three in view.
+  const shownFindings =
+    report.findings.length <= 5 ? report.findings.length : 3;
   const sourceLink = (id: string) => {
     const e = report.evidence.find((x) => x.id === id);
     return e?.url ? (
@@ -100,7 +111,7 @@ export function ReportView({ report }: { report: ReportV2 }) {
         </>
       )}
       <div className="findings">
-        {report.findings.slice(0, 3).map((f) => (
+        {report.findings.slice(0, shownFindings).map((f) => (
           <article key={f.id}>
             <span className={"kind " + f.kind}>
               {f.kind === "observed"
@@ -117,26 +128,25 @@ export function ReportView({ report }: { report: ReportV2 }) {
           </article>
         ))}
       </div>
-      {report.findings.length > 3 && (
+      {report.findings.length > shownFindings && (
         <details className="more-findings">
-          <summary>More findings ({report.findings.length - 3})</summary>
-          {report.findings.slice(3).map((f) => (
+          <summary>
+            More findings ({report.findings.length - shownFindings})
+          </summary>
+          {report.findings.slice(shownFindings).map((f) => (
             <p key={f.id}>{f.claim}</p>
           ))}
         </details>
       )}
-      {!!report.uncertainties.length && (
-        <details
-          className="principle"
-          open={report.identityStatus === "ambiguous"}
-        >
-          <summary>Open questions ({report.uncertainties.length})</summary>
+      {showQuestions && !!report.uncertainties.length && (
+        <div className="principle">
+          <h3>Open questions</h3>
           <ul>
             {report.uncertainties.map((u) => (
               <li key={u}>{u}</li>
             ))}
           </ul>
-        </details>
+        </div>
       )}
       {report.mode === "live" && !report.goals.length && (
         <p className="caption">

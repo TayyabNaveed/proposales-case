@@ -171,23 +171,21 @@ export function ServicesView({
               })}
           </div>
         ))}
-      {rec.selection && flow.report && (
-        <OtherServices flow={flow} blocked={blocked} />
-      )}
       {rec.selection?.abstentionReason && (
         <div className="empty">{rec.selection.abstentionReason}</div>
       )}
       {!!rec.selection?.questions.length && (
-        <details className="principle">
-          <summary>
-            Confirm before sending ({rec.selection.questions.length})
-          </summary>
+        <div className="principle compact">
+          <h3>Before sending, confirm with the client</h3>
           <ul>
             {rec.selection.questions.map((q) => (
               <li key={q}>{q}</li>
             ))}
           </ul>
-        </details>
+        </div>
+      )}
+      {rec.selection && flow.report && (
+        <OtherServices flow={flow} blocked={blocked} />
       )}
       {authenticated && (
         <div className="ai-actions">
@@ -245,14 +243,22 @@ export function ServicesView({
 
 // The rest of the catalogue: collapsed and unchecked, so the operator can add
 // what the AI did not suggest. Added services are attributed to the operator.
-function OtherServices({ flow, blocked }: { flow: ProposalWorkflow; blocked: boolean }) {
-  const suggested = new Set(flow.recommendation.selection?.items.map((i) => i.serviceId));
+function OtherServices({
+  flow,
+  blocked,
+}: {
+  flow: ProposalWorkflow;
+  blocked: boolean;
+}) {
+  const suggested = new Set(
+    flow.recommendation.selection?.items.map((i) => i.serviceId),
+  );
   const chosen = flow.selected.map((p) => p.serviceId);
   const others = catalogueV2.services.filter((s) => !suggested.has(s.id));
   const added = others.filter((s) => chosen.includes(s.id)).length;
   if (!others.length || !flow.report) return null;
   return (
-    <details className="other-services" open={added > 0}>
+    <details className="other-services" open>
       <summary>
         Other services ({others.length}){added ? ` · ${added} added` : ""}
       </summary>
@@ -260,50 +266,60 @@ function OtherServices({ flow, blocked }: { flow: ProposalWorkflow; blocked: boo
         Not suggested for this business. Add any that fit; they’re marked as
         added by you.
       </p>
-      {others.map((service) => {
-        const pick = flow.selected.find((p) => p.serviceId === service.id);
-        const state = serviceAvailability(
-          service,
-          flow.report!,
-          chosen.filter((id) => id !== service.id),
-        );
-        return (
-          <article
-            className={"service other " + (pick ? "chosen" : "")}
-            key={service.id}
-          >
-            <label className="service-heading">
-              <input
-                type="checkbox"
-                checked={!!pick}
-                disabled={blocked || flow.locked || (!pick && !state.available)}
-                onChange={(e) => flow.edit(service.id, e.target.checked ? {} : null)}
-              />
-              <strong>{service.title}</strong>
-              <span>
-                {money(service.unitPriceMinor)}
-                <small>
-                  {service.billing === "monthly" ? "/ month" : "per unit · once"}
-                </small>
-              </span>
-            </label>
-            <p>{service.deliverables.join(" · ")}</p>
-            {pick ? (
-              <>
-                <small className="added-by">Added by you</small>
-                <ServiceControls
-                  flow={flow}
-                  service={service}
-                  pick={pick}
-                  disabled={blocked || flow.locked}
+      <div className="other-list" tabIndex={0} aria-label="Other services">
+        {others.map((service) => {
+          const pick = flow.selected.find((p) => p.serviceId === service.id);
+          const state = serviceAvailability(
+            service,
+            flow.report!,
+            chosen.filter((id) => id !== service.id),
+          );
+          return (
+            <article
+              className={"service other " + (pick ? "chosen" : "")}
+              key={service.id}
+            >
+              <label className="service-heading">
+                <input
+                  type="checkbox"
+                  checked={!!pick}
+                  disabled={
+                    blocked || flow.locked || (!pick && !state.available)
+                  }
+                  onChange={(e) =>
+                    flow.edit(service.id, e.target.checked ? {} : null)
+                  }
                 />
-              </>
-            ) : (
-              !state.available && <small className="prerequisite">{state.reason}</small>
-            )}
-          </article>
-        );
-      })}
+                <strong>{service.title}</strong>
+                <span>
+                  {money(service.unitPriceMinor)}
+                  <small>
+                    {service.billing === "monthly"
+                      ? "/ month"
+                      : "per unit · once"}
+                  </small>
+                </span>
+              </label>
+              <p>{service.deliverables.join(" · ")}</p>
+              {pick ? (
+                <>
+                  <small className="added-by">Added by you</small>
+                  <ServiceControls
+                    flow={flow}
+                    service={service}
+                    pick={pick}
+                    disabled={blocked || flow.locked}
+                  />
+                </>
+              ) : (
+                !state.available && (
+                  <small className="prerequisite">{state.reason}</small>
+                )
+              )}
+            </article>
+          );
+        })}
+      </div>
     </details>
   );
 }

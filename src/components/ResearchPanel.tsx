@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { researchInputSchema, type OperatorChoice } from "../domain/research";
 import {
   publicResearchSchema,
@@ -22,6 +23,7 @@ export function ResearchPanel({
   onExplore,
   onBusy,
   restoreAllowed,
+  detailsSlot,
 }: {
   authenticated: boolean;
   blocked: boolean;
@@ -33,6 +35,8 @@ export function ResearchPanel({
   onExplore(): void;
   onBusy(b: boolean): void;
   restoreAllowed: boolean;
+  // Where the analysis details render: the foot of the research view.
+  detailsSlot: HTMLElement | null;
 }) {
   const [businessName, setName] = useState(""),
     [location, setLocation] = useState(""),
@@ -117,9 +121,14 @@ export function ResearchPanel({
       cancelled = true;
     };
   }, [authenticated, restoreAllowed]);
-  function edit(set: (v: string) => void, value: string) {
+  // Editing the name or place is a draft: the current analysis stays on screen
+  // (and saved) until the operator analyses the new values.
+  const changed =
+    !!search &&
+    (search.input.businessName !== businessName.trim() ||
+      search.input.location !== location.trim());
+  function reset() {
     revision.current++;
-    set(value);
     setSearch(null);
     setIdentify(null);
     setReport(null);
@@ -134,7 +143,10 @@ export function ResearchPanel({
   // Step 1: sources and candidate businesses, then the operator's choice.
   async function analyse(refresh = false) {
     if (active.current || blocked || restoring) return;
-    if (!refresh && identify?.result && search && !report?.result) {
+    // New values replace the current analysis only now, when analysed.
+    const fresh = changed;
+    if (fresh) reset();
+    if (!fresh && !refresh && identify?.result && search && !report?.result) {
       setChoosing(true);
       return;
     }
@@ -144,10 +156,11 @@ export function ResearchPanel({
     try {
       const input = researchInputSchema.parse({ businessName, location });
       if (refresh) onReset();
+      const start = refresh || fresh;
       await identifyStep({
         input,
-        search: refresh ? null : search,
-        identify: refresh ? null : identify,
+        search: start ? null : search,
+        identify: start ? null : identify,
         request: (path, body) =>
           request(
             path,
@@ -271,7 +284,7 @@ export function ResearchPanel({
               maxLength={120}
               disabled={disabled}
               value={businessName}
-              onChange={(e) => edit(setName, e.target.value)}
+              onChange={(e) => setName(e.target.value)}
               placeholder="e.g. a local workshop"
             />
           </label>
@@ -283,48 +296,78 @@ export function ResearchPanel({
               maxLength={120}
               disabled={disabled}
               value={location}
-              onChange={(e) => edit(setLocation, e.target.value)}
+              onChange={(e) => setLocation(e.target.value)}
               placeholder="City or area"
             />
           </label>
         </div>
         <div className="research-actions">
-          <button className="primary" disabled={disabled}>
-            {identify?.result && !report?.result
-              ? "Choose the business"
-              : search && message
-                ? "Continue analysis"
-                : "Analyse business"}
-          </button>
-          {(search || report) && (
+          {/* Once the report is ready there is nothing to continue; editing the
+              name or place brings the button back. */}
+          {(changed || report?.state !== "ready") && (
+            <button className="primary" disabled={disabled}>
+              {changed
+                ? "Analyse business"
+                : identify?.result && !report?.result
+                  ? "Choose the business"
+                  : search && message
+                    ? "Continue analysis"
+                    : "Analyse business"}
+            </button>
+          )}
+          {(search || report) && !changed && report?.state !== "ready" && (
             <button
               type="button"
+              className="text-action"
               disabled={disabled}
               onClick={() => void check()}
             >
               Check saved progress
             </button>
           )}
-          {report?.state === "ready" && (
+        </div>
+        {changed && search && (
+          <p className="secondary-action">
+            The analysis below is still for {search.input.businessName},{" "}
+            {search.input.location}. Analyse to replace it, or{" "}
             <button
               type="button"
+              className="text-action"
+              onClick={() => {
+                setName(search.input.businessName);
+                setLocation(search.input.location);
+              }}
+            >
+              undo the change
+            </button>
+            .
+          </p>
+        )}
+        {report?.state === "ready" && !changed && (
+          <p className="secondary-action">
+            Sources out of date?{" "}
+            <button
+              type="button"
+              className="text-action"
               disabled={disabled}
               onClick={() => void analyse(true)}
             >
               Research again
-            </button>
-          )}
-        </div>
+            </button>{" "}
+            runs a fresh web search for the same name and place. It uses
+            search credits.
+          </p>
+        )}
       </form>
       <p role="status" aria-live="polite" className="analysis-progress">
         {restoring ? "Loading saved analysis" : busy || message}
       </p>
       {!authenticated && (
         <p className="caption">
-          Enter the demo access code above to analyse a business.
+          Unlock access to analyse a business.
         </p>
       )}
-      {message && (
+      {message && report?.state !== "ready" && (
         <button className="text-action" onClick={onExplore}>
           Explore an example
         </button>
@@ -362,7 +405,9 @@ export function ResearchPanel({
           }}
         />
       )}
-      {(search || report) && (
+      {(search || report) &&
+        detailsSlot &&
+        createPortal(
         <details className="technical">
           <summary>Analysis details</summary>
           <p>
@@ -396,8 +441,9 @@ export function ResearchPanel({
           {report?.errorCode && (
             <p>{explanations[report.errorCode] ?? "Report not available."}</p>
           )}
-        </details>
-      )}
+        </details>,
+          detailsSlot,
+        )}
     </section>
   );
 }

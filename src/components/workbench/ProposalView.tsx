@@ -14,7 +14,12 @@ export function ProposalView({
 }) {
   const [creating, setCreating] = useState(false);
   return (
-    <section className="review">
+    // Once services are suggested, the next step stays docked at the bottom of
+    // the screen, with the business name and totals for context.
+    <section
+      className={"review" + (flow.recommendation.selection ? " docked" : "")}
+      aria-label="Create and review"
+    >
       {creating && flow.report && (
         <CreateProposalDialog
           flow={flow}
@@ -26,37 +31,39 @@ export function ProposalView({
           }}
         />
       )}
-      <div>
+      <div className="review-summary">
         <p className="eyebrow">03 / CREATE & REVIEW</p>
-        <h2>Your proposal, ready to review.</h2>
-        <p>
-          Add a short introduction and the recipient, then create an unsent
-          draft and review it in Proposales before sending.
-        </p>
-        <div className="totals">
+        <h2>Proposal for {flow.report?.businessName ?? "this business"}</h2>
+        <dl className="totals">
           <div>
-            <small>CORE · ONCE</small>
-            <strong>{money(flow.preview?.coreOneTimeMinor ?? 0)}</strong>
+            <dt>Core</dt>
+            <dd>
+              {money(flow.preview?.coreOneTimeMinor ?? 0)}
+              <em> once</em>
+              {!!flow.preview?.coreMonthlyMinor && (
+                <>
+                  {" + "}
+                  {money(flow.preview.coreMonthlyMinor)}
+                  <em>/month</em>
+                </>
+              )}
+            </dd>
           </div>
           <div>
-            <small>CORE · MONTHLY</small>
-            <strong>
-              {money(flow.preview?.coreMonthlyMinor ?? 0)}
-              <em>/ month</em>
-            </strong>
+            <dt>Optional</dt>
+            <dd>
+              {money(flow.preview?.optionalOneTimeMinor ?? 0)}
+              <em> once</em>
+              {!!flow.preview?.optionalMonthlyMinor && (
+                <>
+                  {" + "}
+                  {money(flow.preview.optionalMonthlyMinor)}
+                  <em>/month</em>
+                </>
+              )}
+            </dd>
           </div>
-          <div>
-            <small>OPTIONAL · ONCE</small>
-            <strong>{money(flow.preview?.optionalOneTimeMinor ?? 0)}</strong>
-          </div>
-          <div>
-            <small>OPTIONAL · MONTHLY</small>
-            <strong>
-              {money(flow.preview?.optionalMonthlyMinor ?? 0)}
-              <em>/ month</em>
-            </strong>
-          </div>
-        </div>
+        </dl>
         <p className="tax">
           Sample prices exclude tax. Optional extras start unselected.
         </p>
@@ -64,7 +71,7 @@ export function ProposalView({
       </div>
       <div className="actions">
         {!authenticated ? (
-          <p>Enter the demo access code above to create a proposal.</p>
+          <p>Unlock access from the sidebar to create a proposal.</p>
         ) : (
           <>
             {!flow.pending && !flow.outcome?.providerId && (
@@ -125,10 +132,18 @@ export function ProposalView({
             )}
           </>
         )}
-        <small>
-          Creation sends no email. Review and sending happen in Proposales.
+        <small
+          className={
+            flow.recommendation.state === "recorded" && !flow.outcome
+              ? "hint"
+              : undefined
+          }
+        >
+          {flow.recommendation.state === "recorded" && !flow.outcome
+            ? "First choose “Prepare this example” under the suggested services."
+            : "Creates an unsent draft. You review and send it in Proposales."}
         </small>
-        <p role="status" aria-live="polite" className="status">
+        <p role="status" aria-live="polite" className="action-status">
           {flow.busy || flow.message}
         </p>
       </div>

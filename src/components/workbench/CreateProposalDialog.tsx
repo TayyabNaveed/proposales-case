@@ -147,15 +147,15 @@ export function CreateProposalDialog({
           </small>
         </fieldset>
         {!!questions.length && (
-          <details className="principle">
-            <summary>To confirm with the client ({questions.length})</summary>
+          <div className="principle">
+            <h3>To confirm with the client</h3>
             <ul>
               {questions.map((q) => (
                 <li key={q}>{q}</li>
               ))}
             </ul>
             <small>For you only; these are not added to the proposal.</small>
-          </details>
+          </div>
         )}
         <div className="choice-actions">
           <button type="button" onClick={onCancel}>

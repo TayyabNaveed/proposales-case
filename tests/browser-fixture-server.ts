@@ -237,6 +237,36 @@ createServer(async (req, res) => {
         reply(res, { error: "access_required" }, 401);
         return;
       }
+      if (u.pathname === "/api/usage") {
+        const period = { searches: 3, credits: 12, aiRuns: 4, tokens: 41200 };
+        reply(res, { today: period, month: { ...period, searches: 18, aiRuns: 22, tokens: 236000 } });
+        return;
+      }
+      if (u.pathname === "/api/proposals") {
+        const row = (status: string, businessName: string, i: number) => ({
+          snapshotId: "synthetic-" + i,
+          createdAt: now(),
+          businessName,
+          mode: "synthetic",
+          totals: { coreOneTimeMinor: 180000, coreMonthlyMinor: 8000, optionalOneTimeMinor: 55000, optionalMonthlyMinor: 0 },
+          recipient: { companyName: businessName, contactName: "Example Contact", email: "contact@example.com" },
+          changes: { kept: 3, removed: [], added: [] },
+          questions: ["Confirm the monthly budget.", "Confirm who maintains the site content."],
+          providerId: randomUUID(),
+          editorUrl: "https://secure.proposales.com/synthetic-browser-qa",
+          status,
+          statusChangedAt: null,
+        });
+        reply(res, {
+          proposals: [
+            row("draft", reports[0].businessName, 1),
+            row("draft", reports[1].businessName, 2),
+            row("active", reports[1].businessName, 3),
+            row("accepted", reports[0].businessName, 4),
+          ],
+        });
+        return;
+      }
       if (u.pathname === "/api/research") {
         if (req.method === "GET") {
           const r = searches.get(u.searchParams.get("id")!);
